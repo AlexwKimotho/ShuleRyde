@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-sage-50: #f0f5f3;
+  --color-sage-100: #d9e7df;
+  --color-sage-500: #6B9080;
+  --color-sage-700: #5A7A6A;
+  --color-sage-900: #4A6459;
+
+  --color-terracotta-50: #fef3f1;
+  --color-terracotta-100: #fde2dd;
+  --color-terracotta-500: #E07A5F;
+  --color-terracotta-700: #C96850;
+  --color-terracotta-900: #B45641;
+
+  --color-paper: #F8F6F1;
+  --color-cloud: #EAE7DC;
+  --color-border: #D8D5CB;
+  --color-slate: #5A6C7D;
+  --color-ink: #2C3E50;
+  --color-success: #52B788;
+  --color-warning: #F4A261;
+  --color-error: #E76F51;
+
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui;
+  --font-display: 'Fraunces', Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #F8F6F1;
+  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui;
+  color: #2C3E50;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+}

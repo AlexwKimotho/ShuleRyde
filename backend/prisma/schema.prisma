@@ -1,0 +1,191 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// OPERATORS (Admin Users)
+model Operator {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  password_hash         String
+  full_name             String
+  business_name         String
+  phone                 String
+  mpesa_paybill         String?
+  subscription_status   String    @default("ACTIVE")
+  suspension_date       DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  vehicles              Vehicle[]
+  parents               Parent[]
+  pricing_config        PricingConfig?
+  compliance_documents  ComplianceDocument[]
+  activity_logs         ActivityLog[]
+
+  @@index([email])
+}
+
+// VEHICLES
+model Vehicle {
+  id            String   @id @default(uuid())
+  operator_id   String
+  license_plate String
+  model         String
+  route         String?
+  max_capacity  Int      @default(7)
+  status        String   @default("IDLE")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  operator        Operator             @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  children        Child[]
+  compliance_docs ComplianceDocument[]
+  activity_logs   ActivityLog[]
+
+  @@unique([operator_id, license_plate])
+  @@index([operator_id, status])
+}
+
+// PARENTS
+model Parent {
+  id            String   @id @default(uuid())
+  operator_id   String
+  full_name     String
+  phone         String
+  email         String?
+  unique_url_id String   @unique @default(cuid())
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  operator Operator  @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  children Child[]
+  payments Payment[]
+
+  @@index([operator_id])
+  @@index([phone])
+}
+
+// CHILDREN
+model Child {
+  id               String   @id @default(uuid())
+  parent_id        String
+  vehicle_id       String?
+  full_name        String
+  school_name      String?
+  pickup_location  String?
+  dropoff_location String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  parent   Parent    @relation(fields: [parent_id], references: [id], onDelete: Cascade)
+  vehicle  Vehicle?  @relation(fields: [vehicle_id], references: [id], onDelete: SetNull)
+  checkins CheckIn[]
+
+  @@index([parent_id])
+  @@index([vehicle_id])
+}
+
+// PAYMENTS
+model Payment {
+  id                   String    @id @default(uuid())
+  parent_id            String
+  amount               Decimal
+  status               String    @default("PENDING")
+  payment_date         DateTime?
+  payment_method       String?
+  mpesa_transaction_id String?
+  invoice_month        String
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  parent Parent @relation(fields: [parent_id], references: [id], onDelete: Cascade)
+
+  @@index([parent_id, status])
+  @@index([invoice_month])
+}
+
+// COMPLIANCE DOCUMENTS
+model ComplianceDocument {
+  id            String    @id @default(uuid())
+  operator_id   String
+  vehicle_id    String?
+  driver_id     String?
+  document_type String
+  issue_date    DateTime
+  expiry_date   DateTime
+  file_url      String
+  status        String
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  operator Operator         @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  vehicle  Vehicle?         @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+  alerts   ComplianceAlert[]
+
+  @@index([operator_id, expiry_date])
+  @@index([vehicle_id, status])
+}
+
+// COMPLIANCE ALERTS
+model ComplianceAlert {
+  id           String   @id @default(uuid())
+  document_id  String
+  alert_type   String
+  sent_at      DateTime @default(now())
+  acknowledged Boolean  @default(false)
+
+  document ComplianceDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@index([document_id, alert_type])
+}
+
+// CHECK-INS
+model CheckIn {
+  id           String   @id @default(uuid())
+  child_id     String
+  vehicle_id   String
+  checkin_type String
+  checkin_time DateTime @default(now())
+  location_lat Decimal?
+  location_lng Decimal?
+  created_at   DateTime @default(now())
+
+  child Child @relation(fields: [child_id], references: [id], onDelete: Cascade)
+
+  @@index([child_id, checkin_time])
+}
+
+// ACTIVITY LOGS
+model ActivityLog {
+  id          String   @id @default(uuid())
+  operator_id String
+  vehicle_id  String?
+  event_type  String
+  description String
+  metadata    String?
+  timestamp   DateTime @default(now())
+
+  operator Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+  vehicle  Vehicle? @relation(fields: [vehicle_id], references: [id], onDelete: SetNull)
+
+  @@index([operator_id, timestamp])
+  @@index([event_type])
+}
+
+// PRICING CONFIG
+model PricingConfig {
+  id                String   @id @default(uuid())
+  operator_id       String   @unique
+  model_type        String   @default("PER_STUDENT")
+  vehicle_base_rate Decimal?
+  per_student_rate  Decimal?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  operator Operator @relation(fields: [operator_id], references: [id], onDelete: Cascade)
+}

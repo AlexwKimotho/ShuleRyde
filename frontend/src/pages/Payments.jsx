@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { paymentsAPI, parentsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
@@ -9,6 +10,250 @@ const STATUS_COLORS = {
 };
 
 const currentMonth = () => new Date().toISOString().slice(0, 7);
+const fmt = (n) => `KES ${parseFloat(n).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
+const shortId = (id) => id?.slice(0, 8).toUpperCase();
+const monthLabel = (m) => {
+  const [y, mo] = m.split('-');
+  return new Date(y, mo - 1).toLocaleDateString('en-KE', { month: 'long', year: 'numeric' });
+};
+
+// ── Print helper ───────────────────────────────────────────
+const usePrint = (ref) => () => {
+  const content = ref.current?.innerHTML;
+  if (!content) return;
+  const win = window.open('', '_blank', 'width=800,height=600');
+  win.document.write(`
+    <!DOCTYPE html><html><head>
+    <title>ShuleRyde Document</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #2C3E50; background: white; padding: 40px; }
+      .doc { max-width: 680px; margin: 0 auto; }
+      .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 2px solid #6B9080; padding-bottom: 20px; }
+      .brand { font-size: 22px; font-weight: 700; color: #6B9080; }
+      .brand span { display: block; font-size: 12px; font-weight: 400; color: #5A6C7D; margin-top: 2px; }
+      .doc-title { text-align: right; }
+      .doc-title h1 { font-size: 28px; font-weight: 800; letter-spacing: 2px; color: #2C3E50; }
+      .doc-title p { font-size: 12px; color: #5A6C7D; margin-top: 4px; }
+      .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+      .meta-block h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #5A6C7D; margin-bottom: 6px; }
+      .meta-block p { font-size: 14px; color: #2C3E50; line-height: 1.5; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+      thead th { background: #F8F6F1; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #5A6C7D; border-bottom: 1px solid #EAE7DC; }
+      tbody td { padding: 14px; font-size: 14px; border-bottom: 1px solid #EAE7DC; }
+      .total-row { background: #F8F6F1; }
+      .total-row td { font-weight: 700; font-size: 15px; padding: 14px; }
+      .amount { text-align: right; }
+      .badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+      .badge-paid { background: #dcfce7; color: #15803d; }
+      .badge-pending { background: #fef3c7; color: #92400e; }
+      .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #EAE7DC; font-size: 12px; color: #5A6C7D; text-align: center; }
+      .mpesa-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-top: 24px; }
+      .mpesa-box h4 { font-size: 12px; font-weight: 600; color: #166534; margin-bottom: 6px; }
+      .mpesa-box p { font-size: 13px; color: #15803d; }
+      @media print { body { padding: 20px; } }
+    </style>
+    </head><body><div class="doc">${content}</div></body></html>
+  `);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); win.close(); }, 400);
+};
+
+// ── Invoice Modal ──────────────────────────────────────────
+const InvoiceModal = ({ payment, operator, onClose }) => {
+  const ref = useRef();
+  const print = usePrint(ref);
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 7);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 px-4 py-8 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-cloud">
+          <h2 className="font-semibold text-ink">Invoice Preview</h2>
+          <div className="flex gap-2">
+            <Button onClick={print}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print / Save PDF
+            </Button>
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+          </div>
+        </div>
+
+        {/* Document */}
+        <div className="p-8 font-sans text-ink" ref={ref}>
+          {/* Header */}
+          <div className="flex justify-between items-start mb-10 pb-5 border-b-2 border-sage-500">
+            <div>
+              <p className="text-xl font-bold text-sage-600">ShuleRyde</p>
+              <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
+              <p className="text-sm text-slate">{operator?.phone}</p>
+            </div>
+            <div className="text-right">
+              <h1 className="text-3xl font-black tracking-widest text-ink">INVOICE</h1>
+              <p className="text-sm text-slate mt-1">#{shortId(payment.id)}</p>
+              <span className="badge badge-pending inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">PENDING</span>
+            </div>
+          </div>
+
+          {/* Meta */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-slate mb-1">Bill To</p>
+              <p className="font-semibold text-ink">{payment.parents?.full_name}</p>
+              <p className="text-sm text-slate">{payment.parents?.phone}</p>
+            </div>
+            <div className="text-right">
+              <div className="mb-2">
+                <p className="text-xs uppercase tracking-widest text-slate">Issue Date</p>
+                <p className="text-sm text-ink">{new Date().toLocaleDateString('en-KE')}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-widest text-slate">Due Date</p>
+                <p className="text-sm font-semibold text-ink">{dueDate.toLocaleDateString('en-KE')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Line items */}
+          <table className="w-full mb-6 text-sm border-collapse">
+            <thead>
+              <tr className="bg-paper border-y border-cloud">
+                <th className="px-4 py-2.5 text-left text-xs uppercase tracking-wide text-slate font-medium">Description</th>
+                <th className="px-4 py-2.5 text-right text-xs uppercase tracking-wide text-slate font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-cloud">
+                <td className="px-4 py-4">
+                  <p className="font-medium text-ink">School Transport Fee</p>
+                  <p className="text-xs text-slate mt-0.5">{monthLabel(payment.invoice_month)}</p>
+                </td>
+                <td className="px-4 py-4 text-right font-medium">{fmt(payment.amount)}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr className="bg-paper">
+                <td className="px-4 py-3 font-bold text-ink">Total Due</td>
+                <td className="px-4 py-3 text-right font-bold text-ink text-base">{fmt(payment.amount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          {/* M-Pesa */}
+          {operator?.mpesa_paybill && (
+            <div className="rounded-xl bg-green-50 border border-green-200 p-4 mb-6">
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Pay via M-Pesa</p>
+              <p className="text-sm text-green-800">Paybill / Till: <strong>{operator.mpesa_paybill}</strong></p>
+              <p className="text-sm text-green-800">Account: <strong>{shortId(payment.id)}</strong></p>
+            </div>
+          )}
+
+          <p className="text-xs text-slate text-center mt-6">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Receipt Modal ──────────────────────────────────────────
+const ReceiptModal = ({ payment, operator, onClose }) => {
+  const ref = useRef();
+  const print = usePrint(ref);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 px-4 py-8 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-cloud">
+          <h2 className="font-semibold text-ink">Receipt Preview</h2>
+          <div className="flex gap-2">
+            <Button onClick={print}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print / Save PDF
+            </Button>
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+          </div>
+        </div>
+
+        <div className="p-8 font-sans text-ink" ref={ref}>
+          {/* Header */}
+          <div className="flex justify-between items-start mb-10 pb-5 border-b-2 border-sage-500">
+            <div>
+              <p className="text-xl font-bold text-sage-600">ShuleRyde</p>
+              <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
+              <p className="text-sm text-slate">{operator?.phone}</p>
+            </div>
+            <div className="text-right">
+              <h1 className="text-3xl font-black tracking-widest text-ink">RECEIPT</h1>
+              <p className="text-sm text-slate mt-1">#{shortId(payment.id)}</p>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">PAID</span>
+            </div>
+          </div>
+
+          {/* Meta */}
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-slate mb-1">Received From</p>
+              <p className="font-semibold text-ink">{payment.parents?.full_name}</p>
+              <p className="text-sm text-slate">{payment.parents?.phone}</p>
+            </div>
+            <div className="text-right">
+              <div className="mb-2">
+                <p className="text-xs uppercase tracking-widest text-slate">Date Paid</p>
+                <p className="text-sm font-semibold text-ink">
+                  {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-KE') : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-widest text-slate">Method</p>
+                <p className="text-sm text-ink">{payment.payment_method || 'Cash'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Line items */}
+          <table className="w-full mb-6 text-sm border-collapse">
+            <thead>
+              <tr className="bg-paper border-y border-cloud">
+                <th className="px-4 py-2.5 text-left text-xs uppercase tracking-wide text-slate font-medium">Description</th>
+                <th className="px-4 py-2.5 text-right text-xs uppercase tracking-wide text-slate font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-cloud">
+                <td className="px-4 py-4">
+                  <p className="font-medium text-ink">School Transport Fee</p>
+                  <p className="text-xs text-slate mt-0.5">{monthLabel(payment.invoice_month)}</p>
+                </td>
+                <td className="px-4 py-4 text-right font-medium">{fmt(payment.amount)}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr className="bg-green-50">
+                <td className="px-4 py-3 font-bold text-green-800">Total Received</td>
+                <td className="px-4 py-3 text-right font-bold text-green-700 text-base">{fmt(payment.amount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          {/* Confirmation */}
+          <div className="rounded-xl bg-green-50 border border-green-200 p-4 mb-6 text-center">
+            <p className="text-green-700 font-semibold text-sm">Payment Confirmed</p>
+            <p className="text-green-600 text-xs mt-0.5">This receipt confirms full payment for {monthLabel(payment.invoice_month)}.</p>
+          </div>
+
+          <p className="text-xs text-slate text-center mt-4">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ── Add Payment Modal ──────────────────────────────────────
 const PaymentModal = ({ parents, onClose, onSaved }) => {
@@ -95,10 +340,12 @@ const GenerateModal = ({ onClose, onSaved }) => {
 
 // ── Page ───────────────────────────────────────────────────
 const Payments = () => {
+  const { operator } = useAuth();
   const [payments, setPayments] = useState([]);
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // null | 'add' | 'generate'
+  const [modal, setModal] = useState(null);
+  const [docModal, setDocModal] = useState(null); // { type: 'invoice'|'receipt', payment }
   const [marking, setMarking] = useState(null);
   const [toast, setToast] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -118,8 +365,8 @@ const Payments = () => {
   const handleMarkPaid = async (id) => {
     setMarking(id);
     try {
-      await paymentsAPI.markAsPaid(id, { payment_method: 'CASH' });
-      setPayments((prev) => prev.map((p) => p.id === id ? { ...p, status: 'PAID', payment_date: new Date().toISOString() } : p));
+      const { data } = await paymentsAPI.markAsPaid(id, { payment_method: 'CASH' });
+      setPayments((prev) => prev.map((p) => p.id === id ? data.payment : p));
     } catch {}
     finally { setMarking(null); }
   };
@@ -145,6 +392,8 @@ const Payments = () => {
     <div className="max-w-5xl mx-auto">
       {modal === 'add' && <PaymentModal parents={parents} onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />}
       {modal === 'generate' && <GenerateModal onClose={() => setModal(null)} onSaved={(msg) => { setModal(null); load(); showToast(msg); }} />}
+      {docModal?.type === 'invoice' && <InvoiceModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} />}
+      {docModal?.type === 'receipt' && <ReceiptModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} />}
 
       {toast && (
         <div className="fixed top-4 right-4 z-50 bg-ink text-white px-4 py-3 rounded-xl text-sm shadow-lg">{toast}</div>
@@ -232,7 +481,21 @@ const Payments = () => {
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       {p.status === 'PENDING' && (
-                        <Button size="sm" loading={marking === p.id} onClick={() => handleMarkPaid(p.id)}>Mark Paid</Button>
+                        <>
+                          <Button size="sm" variant="secondary"
+                            onClick={() => setDocModal({ type: 'invoice', payment: p })}>
+                            Invoice
+                          </Button>
+                          <Button size="sm" loading={marking === p.id} onClick={() => handleMarkPaid(p.id)}>
+                            Mark Paid
+                          </Button>
+                        </>
+                      )}
+                      {p.status === 'PAID' && (
+                        <Button size="sm" variant="secondary"
+                          onClick={() => setDocModal({ type: 'receipt', payment: p })}>
+                          Receipt
+                        </Button>
                       )}
                       <button onClick={() => handleDelete(p.id)} className="text-slate hover:text-error transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

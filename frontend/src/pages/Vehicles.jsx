@@ -213,7 +213,7 @@ const Vehicles = () => {
                   <td className="px-5 py-4 text-slate">{v.model}</td>
                   <td className="px-5 py-4 text-slate hidden sm:table-cell">{v.route || '—'}</td>
                   <td className="px-5 py-4 text-slate hidden md:table-cell">
-                    {v._count?.children ?? 0} / {v.max_capacity}
+                    {v.children?.[0]?.count ?? 0} / {v.max_capacity}
                   </td>
                   <td className="px-5 py-4">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v.status]}`}>

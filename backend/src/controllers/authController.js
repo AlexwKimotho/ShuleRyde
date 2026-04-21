@@ -1,43 +1,41 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
-const prisma = require('../config/database');
-
-const generateToken = (operator) => {
-  return jwt.sign(
-    { id: operator.id, email: operator.email },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-  );
-};
+const supabase = require('../config/database');
 
 const signup = async (req, res, next) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password, full_name, business_name, phone } = req.body;
 
-    const existing = await prisma.operator.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(409).json({ error: 'Email already registered' });
-    }
-
-    const password_hash = await bcrypt.hash(password, 12);
-
-    const operator = await prisma.operator.create({
-      data: { email, password_hash, full_name, business_name, phone },
-      select: {
-        id: true, email: true, full_name: true,
-        business_name: true, phone: true, subscription_status: true, created_at: true,
-      },
+    // Create user in Supabase Auth (auto-confirms email via admin API)
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
     });
 
-    const token = generateToken(operator);
+    if (authError) {
+      if (authError.message.toLowerCase().includes('already')) {
+        return res.status(409).json({ error: 'Email already registered' });
+      }
+      throw authError;
+    }
 
-    res.status(201).json({ token, operator });
+    // Create operator profile row
+    const { data: operator, error: profileError } = await supabase
+      .from('operators')
+      .insert({ id: authData.user.id, email, full_name, business_name, phone })
+      .select('id, email, full_name, business_name, phone, subscription_status, created_at')
+      .single();
+
+    if (profileError) throw profileError;
+
+    // Sign in to get an access token the client can use
+    const { data: session, error: sessionError } = await supabase.auth.signInWithPassword({ email, password });
+    if (sessionError) throw sessionError;
+
+    res.status(201).json({ token: session.session.access_token, operator });
   } catch (err) {
     next(err);
   }
@@ -46,26 +44,23 @@ const signup = async (req, res, next) => {
 const signin = async (req, res, next) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { email, password } = req.body;
 
-    const operator = await prisma.operator.findUnique({ where: { email } });
-    if (!operator) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return res.status(401).json({ error: 'Invalid email or password' });
 
-    const valid = await bcrypt.compare(password, operator.password_hash);
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
+    const { data: operator, error: profileError } = await supabase
+      .from('operators')
+      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
+      .eq('id', data.user.id)
+      .maybeSingle();
 
-    const token = generateToken(operator);
+    if (profileError) throw profileError;
+    if (!operator) return res.status(404).json({ error: 'Operator profile not found' });
 
-    const { password_hash, ...operatorData } = operator;
-    res.json({ token, operator: operatorData });
+    res.json({ token: data.session.access_token, operator });
   } catch (err) {
     next(err);
   }
@@ -73,17 +68,13 @@ const signin = async (req, res, next) => {
 
 const getMe = async (req, res, next) => {
   try {
-    const operator = await prisma.operator.findUnique({
-      where: { id: req.operator.id },
-      select: {
-        id: true, email: true, full_name: true, business_name: true,
-        phone: true, mpesa_paybill: true, subscription_status: true, created_at: true,
-      },
-    });
+    const { data: operator, error } = await supabase
+      .from('operators')
+      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
+      .eq('id', req.operator.id)
+      .maybeSingle();
 
-    if (!operator) {
-      return res.status(404).json({ error: 'Operator not found' });
-    }
+    if (error || !operator) return res.status(404).json({ error: 'Operator not found' });
 
     res.json({ operator });
   } catch (err) {

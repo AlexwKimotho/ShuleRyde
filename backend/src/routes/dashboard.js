@@ -1,5 +1,5 @@
 const express = require('express');
-const prisma = require('../config/database');
+const supabase = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -11,38 +11,45 @@ router.get('/stats', async (req, res, next) => {
   try {
     const operatorId = req.operator.id;
 
-    const [vehicleCount, parentCount, childCount, recentActivity, pendingPayments] =
-      await Promise.all([
-        prisma.vehicle.count({ where: { operator_id: operatorId, status: 'ACTIVE' } }),
-        prisma.parent.count({ where: { operator_id: operatorId } }),
-        prisma.child.count({
-          where: { parent: { operator_id: operatorId } },
-        }),
-        prisma.activityLog.findMany({
-          where: { operator_id: operatorId },
-          orderBy: { timestamp: 'desc' },
-          take: 10,
-          include: { vehicle: { select: { license_plate: true, model: true } } },
-        }),
-        prisma.payment.aggregate({
-          where: {
-            parent: { operator_id: operatorId },
-            status: 'PENDING',
-          },
-          _sum: { amount: true },
-          _count: true,
-        }),
-      ]);
+    const [
+      { count: vehicleCount },
+      { count: parentCount },
+      { count: childCount },
+      { data: recentActivity },
+      { data: parentRows },
+    ] = await Promise.all([
+      supabase.from('vehicles').select('*', { count: 'exact', head: true }).eq('operator_id', operatorId).eq('status', 'ACTIVE'),
+      supabase.from('parents').select('*', { count: 'exact', head: true }).eq('operator_id', operatorId),
+      supabase.from('children').select('parents!inner(operator_id)', { count: 'exact', head: true }).eq('parents.operator_id', operatorId),
+      supabase.from('activity_logs').select('*, vehicles(license_plate, model)').eq('operator_id', operatorId).order('timestamp', { ascending: false }).limit(10),
+      supabase.from('parents').select('id').eq('operator_id', operatorId),
+    ]);
+
+    // Aggregate pending payments from parent IDs
+    const parentIds = (parentRows || []).map((p) => p.id);
+    let pendingCount = 0;
+    let pendingAmount = 0;
+
+    if (parentIds.length > 0) {
+      const { data: pendingPayments } = await supabase
+        .from('payments')
+        .select('amount')
+        .in('parent_id', parentIds)
+        .eq('status', 'PENDING');
+
+      pendingCount = pendingPayments?.length || 0;
+      pendingAmount = (pendingPayments || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    }
 
     res.json({
       stats: {
-        active_vehicles: vehicleCount,
-        total_students: childCount,
-        total_parents: parentCount,
-        pending_payments_count: pendingPayments._count,
-        pending_payments_amount: pendingPayments._sum.amount || 0,
+        active_vehicles: vehicleCount || 0,
+        total_parents: parentCount || 0,
+        total_students: childCount || 0,
+        pending_payments_count: pendingCount,
+        pending_payments_amount: pendingAmount,
       },
-      recent_activity: recentActivity,
+      recent_activity: recentActivity || [],
     });
   } catch (err) {
     next(err);

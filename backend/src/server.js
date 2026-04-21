@@ -18,6 +18,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/parents', require('./routes/parents'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/compliance', require('./routes/compliance'));
+app.use('/api/settings', require('./routes/settings'));
+app.use('/api/finance', require('./routes/finance'));
 
 // Health check
 app.get('/health', (req, res) => {

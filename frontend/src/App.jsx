@@ -3,9 +3,13 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Vehicles from './pages/Vehicles';
+import Parents from './pages/Parents';
+import Payments from './pages/Payments';
+import Compliance from './pages/Compliance';
+import Settings from './pages/Settings';
+import Finance from './pages/Finance';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
-import ComingSoon from './pages/ComingSoon';
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-paper">
@@ -34,18 +38,15 @@ const AppRoutes = () => {
 
       <Route
         path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
+        element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}
       >
         <Route index element={<Dashboard />} />
         <Route path="vehicles" element={<Vehicles />} />
-        <Route path="parents" element={<ComingSoon title="Parents" />} />
-        <Route path="payments" element={<ComingSoon title="Payments" />} />
-        <Route path="compliance" element={<ComingSoon title="Compliance" />} />
-        <Route path="settings" element={<ComingSoon title="Settings" />} />
+        <Route path="parents" element={<Parents />} />
+        <Route path="payments" element={<Payments />} />
+        <Route path="compliance" element={<Compliance />} />
+        <Route path="finance" element={<Finance />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

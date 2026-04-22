@@ -4,7 +4,6 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Vehicles from './pages/Vehicles';
 import Parents from './pages/Parents';
-import Payments from './pages/Payments';
 import Compliance from './pages/Compliance';
 import Settings from './pages/Settings';
 import Finance from './pages/Finance';
@@ -43,7 +42,6 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
         <Route path="vehicles" element={<Vehicles />} />
         <Route path="parents" element={<Parents />} />
-        <Route path="payments" element={<Payments />} />
         <Route path="compliance" element={<Compliance />} />
         <Route path="finance" element={<Finance />} />
         <Route path="settings" element={<Settings />} />

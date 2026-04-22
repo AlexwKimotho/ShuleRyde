@@ -52,6 +52,7 @@ export const paymentsAPI = {
   getAll: () => api.get('/payments'),
   create: (data) => api.post('/payments', data),
   markAsPaid: (id, data) => api.put(`/payments/${id}/mark-paid`, data),
+  recordPartialPayment: (id, data) => api.put(`/payments/${id}/partial-payment`, data),
   delete: (id) => api.delete(`/payments/${id}`),
   generateMonthly: (month, data) => api.post(`/payments/generate/${month}`, data),
 };
@@ -70,6 +71,8 @@ export const settingsAPI = {
 
 export const financeAPI = {
   getBalanceSheet: () => api.get('/finance/balance-sheet'),
+  getProfitAndLoss: (year) => api.get('/finance/profit-loss', { params: { year } }),
+  getFinancialSummary: () => api.get('/finance/summary'),
 };
 
 export default api;

@@ -5,7 +5,7 @@ const getVehicles = async (req, res, next) => {
   try {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('*, children(count)')
+      .select('*, children(id, full_name, school_name, pickup_location, dropoff_location, parents(full_name, phone))')
       .eq('operator_id', req.operator.id)
       .order('created_at', { ascending: false });
 
@@ -42,6 +42,13 @@ const createVehicle = async (req, res, next) => {
       }
       throw error;
     }
+
+    supabase.from('activity_logs').insert({
+      operator_id: req.operator.id,
+      vehicle_id: vehicle.id,
+      event_type: 'SYSTEM_EVENT',
+      description: `Vehicle ${vehicle.license_plate} (${vehicle.model}) added to fleet`,
+    }).then(() => {});
 
     res.status(201).json({ vehicle });
   } catch (err) {

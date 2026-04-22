@@ -5,10 +5,13 @@ import Input from '../components/ui/Input';
 
 const STATUS_COLORS = {
   ACTIVE: 'bg-green-100 text-green-700',
+  MOVING: 'bg-blue-100 text-blue-700',
   IDLE: 'bg-cloud text-slate',
   MAINTENANCE: 'bg-amber-100 text-amber-700',
   SUSPENDED: 'bg-red-100 text-red-700',
 };
+
+const STATUS_OPTIONS = ['ACTIVE', 'MOVING', 'IDLE', 'MAINTENANCE', 'SUSPENDED'];
 
 const VehicleModal = ({ vehicle, onClose, onSaved }) => {
   const isEdit = Boolean(vehicle?.id);
@@ -61,12 +64,79 @@ const VehicleModal = ({ vehicle, onClose, onSaved }) => {
   );
 };
 
+const VehicleViewModal = ({ vehicle, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-0 sm:px-4">
+    <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-semibold text-ink">Vehicle Details</h2>
+        <button onClick={onClose} className="text-slate hover:text-ink p-1">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-paper rounded-xl p-4">
+            <p className="text-xs uppercase tracking-wide text-slate mb-1">License Plate</p>
+            <p className="font-semibold text-ink">{vehicle.license_plate}</p>
+          </div>
+          <div className="bg-paper rounded-xl p-4">
+            <p className="text-xs uppercase tracking-wide text-slate mb-1">Status</p>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[vehicle.status]}`}>{vehicle.status}</span>
+          </div>
+        </div>
+        <div className="bg-paper rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide text-slate mb-1">Model</p>
+          <p className="font-semibold text-ink">{vehicle.model}</p>
+        </div>
+        {vehicle.route && (
+          <div className="bg-paper rounded-xl p-4">
+            <p className="text-xs uppercase tracking-wide text-slate mb-1">Route</p>
+            <p className="font-semibold text-ink">{vehicle.route}</p>
+          </div>
+        )}
+        <div className="bg-paper rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide text-slate mb-1">Capacity</p>
+          <p className="font-semibold text-ink">{vehicle.children?.length ?? 0} / {vehicle.max_capacity} students</p>
+        </div>
+        <div className="bg-paper rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide text-slate mb-2">Students ({vehicle.children?.length ?? 0})</p>
+          {vehicle.children?.length > 0 ? (
+            <div className="space-y-2">
+              {vehicle.children.map((child) => (
+                <div key={child.id} className="flex items-start justify-between gap-2 py-2 border-b border-cloud last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">{child.full_name}</p>
+                    {child.school_name && <p className="text-xs text-slate">{child.school_name}</p>}
+                    {child.pickup_location && <p className="text-xs text-slate/70">↑ {child.pickup_location}</p>}
+                  </div>
+                  {child.parents && (
+                    <p className="text-xs text-slate flex-shrink-0">{child.parents.full_name}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate">No students assigned yet</p>
+          )}
+        </div>
+      </div>
+      <div className="mt-5">
+        <button onClick={onClose} className="w-full px-4 py-2.5 rounded-lg border border-cloud text-slate hover:bg-paper text-sm font-medium transition-colors">Close</button>
+      </div>
+    </div>
+  </div>
+);
+
 const Vehicles = () => {
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [viewTarget, setViewTarget] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(null);
 
   const load = async () => {
     try {
@@ -88,6 +158,15 @@ const Vehicles = () => {
     finally { setDeleting(null); }
   };
 
+  const handleStatusChange = async (id, newStatus) => {
+    setUpdatingStatus(id);
+    try {
+      await vehiclesAPI.update(id, { status: newStatus });
+      setVehicles((v) => v.map((x) => x.id === id ? { ...x, status: newStatus } : x));
+    } catch {}
+    finally { setUpdatingStatus(null); }
+  };
+
   const handleSaved = () => { setModalOpen(false); setEditTarget(null); load(); };
 
   return (
@@ -99,6 +178,7 @@ const Vehicles = () => {
           onSaved={handleSaved}
         />
       )}
+      {viewTarget && <VehicleViewModal vehicle={viewTarget} onClose={() => setViewTarget(null)} />}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
         <div>
@@ -149,13 +229,24 @@ const Vehicles = () => {
                     <p className="text-sm text-slate mt-0.5">{v.model}</p>
                     {v.route && <p className="text-xs text-slate mt-1">{v.route}</p>}
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${STATUS_COLORS[v.status]}`}>
-                    {v.status}
-                  </span>
+                  <select
+                    value={v.status}
+                    disabled={updatingStatus === v.id}
+                    onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                    className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sage-500 ${STATUS_COLORS[v.status]} ${updatingStatus === v.id ? 'opacity-50' : ''}`}
+                  >
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-cloud">
-                  <p className="text-xs text-slate">{v.children?.[0]?.count ?? 0} / {v.max_capacity} students</p>
+                  <p className="text-xs text-slate">{v.children?.length ?? 0} / {v.max_capacity} students</p>
                   <div className="flex gap-3">
+                    <button onClick={() => setViewTarget(v)} className="text-slate hover:text-ink transition-colors" title="View">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
                     <button onClick={() => setEditTarget(v)} className="text-slate hover:text-ink transition-colors" title="Edit">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -191,12 +282,25 @@ const Vehicles = () => {
                     <td className="px-5 py-4 font-medium text-ink">{v.license_plate}</td>
                     <td className="px-5 py-4 text-slate">{v.model}</td>
                     <td className="px-5 py-4 text-slate">{v.route || '—'}</td>
-                    <td className="px-5 py-4 text-slate">{v.children?.[0]?.count ?? 0} / {v.max_capacity}</td>
+                    <td className="px-5 py-4 text-slate">{v.children?.length ?? 0} / {v.max_capacity}</td>
                     <td className="px-5 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v.status]}`}>{v.status}</span>
+                      <select
+                        value={v.status}
+                        disabled={updatingStatus === v.id}
+                        onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                        className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sage-500 ${STATUS_COLORS[v.status]} ${updatingStatus === v.id ? 'opacity-50' : ''}`}
+                      >
+                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => setViewTarget(v)} className="text-slate hover:text-ink transition-colors" title="View">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
                         <button onClick={() => setEditTarget(v)} className="text-slate hover:text-ink transition-colors" title="Edit">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

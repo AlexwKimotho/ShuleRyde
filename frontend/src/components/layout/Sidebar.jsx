@@ -5,6 +5,7 @@ const navItems = [
   {
     label: 'Dashboard',
     to: '/dashboard',
+    permission: null,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -15,6 +16,7 @@ const navItems = [
   {
     label: 'Vehicles',
     to: '/dashboard/vehicles',
+    permission: 'vehicles',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -25,6 +27,7 @@ const navItems = [
   {
     label: 'Parents',
     to: '/dashboard/parents',
+    permission: 'parents',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -33,18 +36,9 @@ const navItems = [
     ),
   },
   {
-    label: 'Payments',
-    to: '/dashboard/payments',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
-      </svg>
-    ),
-  },
-  {
     label: 'Compliance',
     to: '/dashboard/compliance',
+    permission: 'compliance',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -55,6 +49,7 @@ const navItems = [
   {
     label: 'Finance',
     to: '/dashboard/finance',
+    permission: 'finance',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -65,6 +60,7 @@ const navItems = [
   {
     label: 'Settings',
     to: '/dashboard/settings',
+    permission: null,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -117,7 +113,7 @@ const Sidebar = ({ collapsed, onToggle, onMobileClose }) => {
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-2 flex flex-col gap-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {navItems.filter((item) => !item.permission || operator?.permissions?.[item.permission] !== false).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

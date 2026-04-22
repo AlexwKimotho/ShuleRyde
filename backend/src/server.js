@@ -15,6 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/dashboard', require('./routes/dashboard'));
@@ -23,6 +24,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/compliance', require('./routes/compliance'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/finance', require('./routes/finance'));
+app.use('/api/expenses', require('./routes/expenses'));
 
 // Health check
 app.get('/health', (req, res) => {

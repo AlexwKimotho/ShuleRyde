@@ -71,6 +71,7 @@ CREATE TABLE payments (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id            UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
   amount               DECIMAL NOT NULL,
+  amount_collected     DECIMAL NOT NULL DEFAULT 0,
   status               TEXT NOT NULL DEFAULT 'PENDING',
   payment_date         TIMESTAMPTZ,
   payment_method       TEXT,
@@ -149,16 +150,15 @@ CREATE INDEX activity_logs_event_type_idx ON activity_logs(event_type);
 -- error on signup when no policies are defined).
 -- ============================================================
 
-ALTER TABLE operators           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehicles            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE parents             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE children            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE operators            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicles             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parents              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE children             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE compliance_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE compliance_alerts   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE check_ins           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE activity_logs       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pricing_configs     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE compliance_alerts    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE check_ins            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs        ENABLE ROW LEVEL SECURITY;
 
 -- Operators: each user can only access their own row
 CREATE POLICY "operators_select_own" ON operators FOR SELECT USING (auth.uid() = id);
@@ -203,6 +203,8 @@ CREATE TABLE pricing_configs (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE pricing_configs ENABLE ROW LEVEL SECURITY;
+
 -- Auto-update updated_at on row changes
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
@@ -219,3 +221,80 @@ CREATE TRIGGER trg_children_updated_at     BEFORE UPDATE ON children            
 CREATE TRIGGER trg_payments_updated_at     BEFORE UPDATE ON payments             FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_compliance_updated_at   BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_pricing_updated_at      BEFORE UPDATE ON pricing_configs      FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- SUPER ADMINS
+CREATE TABLE IF NOT EXISTS super_admins (
+  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      TEXT UNIQUE NOT NULL,
+  full_name  TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE super_admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "super_admins_self" ON super_admins FOR SELECT USING (auth.uid() = id);
+
+-- ============================================================
+-- PATCHES — run these if the initial migration was applied
+-- before these columns/tables were added
+-- ============================================================
+
+-- Patch: add amount_collected to payments if missing
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_collected DECIMAL NOT NULL DEFAULT 0;
+
+-- Patch: add permissions to operators (controls which modules operator can access)
+ALTER TABLE operators ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{"vehicles": true, "parents": true, "compliance": true, "finance": true}';
+
+-- Patch: add child_id to payments (links a payment to a specific student)
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS child_id UUID REFERENCES children(id) ON DELETE SET NULL;
+
+-- Patch: add admission_number to children
+ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_number TEXT;
+
+-- Patch: payment_transactions — individual payment records under a parent invoice
+CREATE TABLE IF NOT EXISTS payment_transactions (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id       UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  amount           DECIMAL NOT NULL,
+  payment_method   TEXT NOT NULL DEFAULT 'CASH',
+  notes            TEXT,
+  paid_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS payment_txns_payment_id_idx ON payment_transactions(payment_id);
+
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "payment_txns_operator" ON payment_transactions
+  USING (payment_id IN (
+    SELECT p.id FROM payments p
+    JOIN parents pr ON p.parent_id = pr.id
+    WHERE pr.operator_id = auth.uid()
+  ));
+
+-- Patch: expenses table
+CREATE TABLE IF NOT EXISTS expenses (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id  UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+  vehicle_id   UUID REFERENCES vehicles(id) ON DELETE SET NULL,
+  category     TEXT NOT NULL CHECK (category IN ('FUEL','SERVICE','FINE','SALARY','OTHER')),
+  amount       DECIMAL NOT NULL,
+  description  TEXT NOT NULL,
+  expense_date DATE NOT NULL,
+  notes        TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS expenses_operator_date_idx ON expenses(operator_id, expense_date);
+
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "expenses_operator" ON expenses FOR ALL USING (operator_id = auth.uid());
+
+CREATE TRIGGER trg_expenses_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Patch: seed super admin (run after lexkimothowachira@gmail.com exists in auth.users)
+INSERT INTO super_admins (id, email, full_name)
+SELECT id, email, 'Alex Kimotho'
+FROM auth.users
+WHERE email = 'lexkimothowachira@gmail.com'
+ON CONFLICT (id) DO NOTHING;

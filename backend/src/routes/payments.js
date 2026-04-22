@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const auth = require('../middleware/auth');
-const { getPayments, createPayment, markAsPaid, deletePayment, generateMonthly } = require('../controllers/paymentsController');
+const { getPayments, createPayment, markAsPaid, recordPartialPayment, deletePayment, generateMonthly } = require('../controllers/paymentsController');
 
 const router = express.Router();
 router.use(auth);
@@ -15,6 +15,9 @@ router.post('/', [
 ], createPayment);
 
 router.put('/:id/mark-paid', markAsPaid);
+router.put('/:id/partial-payment', [
+  body('amount_paid').isNumeric().withMessage('Payment amount must be a number'),
+], recordPartialPayment);
 router.delete('/:id', deletePayment);
 router.post('/generate/:month', [body('amount').isNumeric()], generateMonthly);
 

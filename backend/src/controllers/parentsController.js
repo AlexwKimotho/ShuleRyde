@@ -30,6 +30,13 @@ const createParent = async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    supabase.from('activity_logs').insert({
+      operator_id: req.operator.id,
+      event_type: 'SYSTEM_EVENT',
+      description: `Parent ${parent.full_name} registered`,
+    }).then(() => {});
+
     res.status(201).json({ parent: { ...parent, children: [] } });
   } catch (err) {
     next(err);

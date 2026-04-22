@@ -95,7 +95,28 @@ const VehicleViewModal = ({ vehicle, onClose }) => (
         )}
         <div className="bg-paper rounded-xl p-4">
           <p className="text-xs uppercase tracking-wide text-slate mb-1">Capacity</p>
-          <p className="font-semibold text-ink">{vehicle.max_capacity} students max</p>
+          <p className="font-semibold text-ink">{vehicle.children?.length ?? 0} / {vehicle.max_capacity} students</p>
+        </div>
+        <div className="bg-paper rounded-xl p-4">
+          <p className="text-xs uppercase tracking-wide text-slate mb-2">Students ({vehicle.children?.length ?? 0})</p>
+          {vehicle.children?.length > 0 ? (
+            <div className="space-y-2">
+              {vehicle.children.map((child) => (
+                <div key={child.id} className="flex items-start justify-between gap-2 py-2 border-b border-cloud last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">{child.full_name}</p>
+                    {child.school_name && <p className="text-xs text-slate">{child.school_name}</p>}
+                    {child.pickup_location && <p className="text-xs text-slate/70">↑ {child.pickup_location}</p>}
+                  </div>
+                  {child.parents && (
+                    <p className="text-xs text-slate flex-shrink-0">{child.parents.full_name}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate">No students assigned yet</p>
+          )}
         </div>
       </div>
       <div className="mt-5">
@@ -200,7 +221,7 @@ const Vehicles = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-cloud">
-                  <p className="text-xs text-slate">{v.children?.[0]?.count ?? 0} / {v.max_capacity} students</p>
+                  <p className="text-xs text-slate">{v.children?.length ?? 0} / {v.max_capacity} students</p>
                   <div className="flex gap-3">
                     <button onClick={() => setViewTarget(v)} className="text-slate hover:text-ink transition-colors" title="View">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,7 +264,7 @@ const Vehicles = () => {
                     <td className="px-5 py-4 font-medium text-ink">{v.license_plate}</td>
                     <td className="px-5 py-4 text-slate">{v.model}</td>
                     <td className="px-5 py-4 text-slate">{v.route || '—'}</td>
-                    <td className="px-5 py-4 text-slate">{v.children?.[0]?.count ?? 0} / {v.max_capacity}</td>
+                    <td className="px-5 py-4 text-slate">{v.children?.length ?? 0} / {v.max_capacity}</td>
                     <td className="px-5 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v.status]}`}>{v.status}</span>
                     </td>

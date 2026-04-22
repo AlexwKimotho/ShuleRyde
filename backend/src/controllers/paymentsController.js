@@ -70,6 +70,13 @@ const markAsPaid = async (req, res, next) => {
 
     if (error) throw error;
     if (!payment) return res.status(404).json({ error: 'Payment not found' });
+
+    supabase.from('activity_logs').insert({
+      operator_id: req.operator.id,
+      event_type: 'PAYMENT_RECEIVED',
+      description: `Full payment of KES ${parseFloat(payment.amount).toLocaleString()} received from ${payment.parents?.full_name} (${payment.invoice_month})`,
+    }).then(() => {});
+
     res.json({ payment });
   } catch (err) {
     next(err);
@@ -109,6 +116,13 @@ const recordPartialPayment = async (req, res, next) => {
       .single();
 
     if (error) throw error;
+
+    supabase.from('activity_logs').insert({
+      operator_id: req.operator.id,
+      event_type: 'PAYMENT_RECEIVED',
+      description: `Partial payment of KES ${parseFloat(amount_paid).toLocaleString()} received from ${updated.parents?.full_name} (${updated.invoice_month})`,
+    }).then(() => {});
+
     res.json({ payment: updated });
   } catch (err) {
     next(err);

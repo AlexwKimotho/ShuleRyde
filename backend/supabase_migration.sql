@@ -244,6 +244,54 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_collected DECIMAL NOT NULL 
 -- Patch: add permissions to operators (controls which modules operator can access)
 ALTER TABLE operators ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{"vehicles": true, "parents": true, "compliance": true, "finance": true}';
 
+-- Patch: add child_id to payments (links a payment to a specific student)
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS child_id UUID REFERENCES children(id) ON DELETE SET NULL;
+
+-- Patch: add admission_number to children
+ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_number TEXT;
+
+-- Patch: payment_transactions — individual payment records under a parent invoice
+CREATE TABLE IF NOT EXISTS payment_transactions (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id       UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  amount           DECIMAL NOT NULL,
+  payment_method   TEXT NOT NULL DEFAULT 'CASH',
+  notes            TEXT,
+  paid_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS payment_txns_payment_id_idx ON payment_transactions(payment_id);
+
+ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "payment_txns_operator" ON payment_transactions
+  USING (payment_id IN (
+    SELECT p.id FROM payments p
+    JOIN parents pr ON p.parent_id = pr.id
+    WHERE pr.operator_id = auth.uid()
+  ));
+
+-- Patch: expenses table
+CREATE TABLE IF NOT EXISTS expenses (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id  UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+  vehicle_id   UUID REFERENCES vehicles(id) ON DELETE SET NULL,
+  category     TEXT NOT NULL CHECK (category IN ('FUEL','SERVICE','FINE','SALARY','OTHER')),
+  amount       DECIMAL NOT NULL,
+  description  TEXT NOT NULL,
+  expense_date DATE NOT NULL,
+  notes        TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS expenses_operator_date_idx ON expenses(operator_id, expense_date);
+
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "expenses_operator" ON expenses FOR ALL USING (operator_id = auth.uid());
+
+CREATE TRIGGER trg_expenses_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 -- Patch: seed super admin (run after lexkimothowachira@gmail.com exists in auth.users)
 INSERT INTO super_admins (id, email, full_name)
 SELECT id, email, 'Alex Kimotho'

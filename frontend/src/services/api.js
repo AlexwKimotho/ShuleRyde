@@ -69,6 +69,14 @@ export const settingsAPI = {
   update: (data) => api.put('/settings', data),
 };
 
+export const expensesAPI = {
+  getAll: (params) => api.get('/expenses', { params }),
+  getSummary: (year) => api.get('/expenses/summary', { params: { year } }),
+  create: (data) => api.post('/expenses', data),
+  update: (id, data) => api.put(`/expenses/${id}`, data),
+  delete: (id) => api.delete(`/expenses/${id}`),
+};
+
 export const financeAPI = {
   getBalanceSheet: () => api.get('/finance/balance-sheet'),
   getProfitAndLoss: (year) => api.get('/finance/profit-loss', { params: { year } }),

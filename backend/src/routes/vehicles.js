@@ -27,7 +27,7 @@ router.put(
     body('license_plate').optional().trim().notEmpty(),
     body('model').optional().trim().notEmpty(),
     body('max_capacity').optional().isInt({ min: 1, max: 50 }),
-    body('status').optional().isIn(['ACTIVE', 'IDLE', 'MAINTENANCE', 'SUSPENDED']),
+    body('status').optional().isIn(['ACTIVE', 'MOVING', 'IDLE', 'MAINTENANCE', 'SUSPENDED']),
   ],
   updateVehicle
 );

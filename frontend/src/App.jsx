@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Finance from './pages/Finance';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import LandingPage from './pages/LandingPage';
 import AdminSignIn from './pages/AdminSignIn';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOperatorDetail from './pages/AdminOperatorDetail';
@@ -71,8 +72,8 @@ const AppRoutes = () => {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
 
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

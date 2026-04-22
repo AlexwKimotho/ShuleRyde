@@ -47,10 +47,7 @@ const SignUp = () => {
     e.preventDefault();
     setServerError('');
     const fieldErrors = validate();
-    if (Object.keys(fieldErrors).length > 0) {
-      setErrors(fieldErrors);
-      return;
-    }
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
     setLoading(true);
     try {
       await signup(form);
@@ -63,21 +60,23 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-sage-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
-            <span className="text-2xl font-display font-semibold text-ink">ShuleRyde</span>
-          </div>
-          <h1 className="text-2xl font-display font-semibold text-ink">Create your account</h1>
-          <p className="text-slate text-sm mt-1">Set up your transport operation in minutes</p>
-        </div>
+    <div className="min-h-screen flex">
 
-        <div className="bg-white rounded-2xl shadow-md p-8 border border-cloud">
+      {/* ── Left panel — form ─────────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 bg-white overflow-y-auto">
+        <div className="w-full max-w-md">
+          {/* Logo */}
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 mb-6">
+              <div className="w-9 h-9 bg-sage-500 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-base">S</span>
+              </div>
+              <span className="text-xl font-display font-semibold text-ink">ShuleRyde</span>
+            </div>
+            <h1 className="text-2xl font-display font-semibold text-ink">Create your account</h1>
+            <p className="text-slate text-sm mt-1">Set up your transport operation in minutes</p>
+          </div>
+
           {serverError && (
             <div className="mb-4 p-3 rounded-lg bg-terracotta-50 border border-terracotta-100 text-error text-sm">
               {serverError}
@@ -166,6 +165,64 @@ const SignUp = () => {
           </p>
         </div>
       </div>
+
+      {/* ── Right panel — visual ──────────────────────────── */}
+      <div
+        className="hidden lg:flex flex-1 relative overflow-hidden flex-col items-start justify-end p-12"
+        style={{
+          background: 'linear-gradient(145deg, #1a3a2e 0%, #2d5a45 30%, #4a7c5e 60%, #6B9080 100%)',
+        }}
+      >
+        {/* Decorative blobs */}
+        <div className="absolute top-[-80px] right-[-80px] w-80 h-80 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #a8d5b5 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 left-[-60px] w-64 h-64 rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #E07A5F 0%, transparent 70%)' }} />
+        <div className="absolute bottom-32 right-12 w-48 h-48 rounded-full opacity-15"
+          style={{ background: 'radial-gradient(circle, #6B9080 0%, transparent 70%)' }} />
+
+        {/* Floating feature cards */}
+        <div className="absolute top-16 right-16 flex flex-col gap-3">
+          <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl px-5 py-3.5 text-white shadow-lg">
+            <p className="text-xs text-white/60 uppercase tracking-widest mb-0.5">Setup time</p>
+            <p className="text-2xl font-bold">5 <span className="text-sm font-normal text-white/60">minutes</span></p>
+          </div>
+        </div>
+
+        <div className="absolute top-1/2 -translate-y-1/2 right-8 flex flex-col gap-3">
+          {[
+            { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Payment Tracking', desc: 'Invoices & receipts' },
+            { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'Compliance', desc: 'Document alerts' },
+            { icon: 'M8 17l4 4 4-4m-4-5v9m6-10.5A2.5 2.5 0 0016 6H8a2.5 2.5 0 00-2 4.5M12 3v3', label: 'Fleet Management', desc: 'Routes & vehicles' },
+          ].map((f) => (
+            <div key={f.label} className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white shadow-lg flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon} />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold leading-tight">{f.label}</p>
+                <p className="text-xs text-white/50">{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom tagline */}
+        <div className="relative z-10">
+          <h2 className="text-4xl font-display font-bold text-white leading-tight mb-3">
+            Get your fleet<br />running in minutes.
+          </h2>
+          <p className="text-white/60 text-base max-w-xs">
+            Join transport operators across Nairobi managing routes, payments, and compliance on ShuleRyde.
+          </p>
+          <p className="text-white/30 text-xs mt-6 tracking-widest uppercase">
+            Routes · Payments · Compliance · Students
+          </p>
+        </div>
+      </div>
+
     </div>
   );
 };

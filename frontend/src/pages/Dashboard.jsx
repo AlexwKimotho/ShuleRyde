@@ -31,15 +31,15 @@ const Dashboard = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-display font-semibold text-ink">Overview</h1>
-        <p className="text-slate text-sm mt-1">
+      <div className="mb-5 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-display font-semibold text-ink">Overview</h1>
+        <p className="text-slate text-xs sm:text-sm mt-1">
           {new Date().toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <StatCard
           label="Active Vehicles"
           value={loading ? '…' : stats?.active_vehicles ?? 0}
@@ -87,11 +87,11 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Recent Activity */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-cloud shadow-sm">
-          <div className="px-5 py-4 border-b border-cloud">
-            <h2 className="font-semibold text-ink">Recent Activity</h2>
+          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-cloud">
+            <h2 className="font-semibold text-ink text-sm sm:text-base">Recent Activity</h2>
           </div>
           <div className="divide-y divide-cloud">
             {activity.length === 0 ? (
@@ -101,7 +101,7 @@ const Dashboard = () => {
               </div>
             ) : (
               activity.map((log) => (
-                <div key={log.id} className="px-5 py-3 flex items-start gap-3">
+                <div key={log.id} className="px-4 sm:px-5 py-3 flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-sage-500 mt-2 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-ink">{log.description}</p>
@@ -121,16 +121,16 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="bg-white rounded-xl border border-cloud shadow-sm">
-          <div className="px-5 py-4 border-b border-cloud">
-            <h2 className="font-semibold text-ink">Quick Actions</h2>
+          <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-cloud">
+            <h2 className="font-semibold text-ink text-sm sm:text-base">Quick Actions</h2>
           </div>
-          <div className="p-5 flex flex-col gap-3">
+          <div className="p-4 sm:p-5 grid grid-cols-2 lg:grid-cols-1 gap-3">
             <Button
               variant="primary"
               className="w-full justify-start gap-3"
               onClick={() => navigate('/dashboard/vehicles')}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Add Vehicle
@@ -140,7 +140,7 @@ const Dashboard = () => {
               className="w-full justify-start gap-3"
               onClick={() => navigate('/dashboard/parents')}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               Add Parent
@@ -150,22 +150,22 @@ const Dashboard = () => {
               className="w-full justify-start gap-3"
               onClick={() => navigate('/dashboard/payments')}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
               </svg>
-              Send Payment Reminder
+              Payments
             </Button>
             <Button
               variant="secondary"
               className="w-full justify-start gap-3"
               onClick={() => navigate('/dashboard/compliance')}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Upload Document
+              Upload Doc
             </Button>
           </div>
         </div>

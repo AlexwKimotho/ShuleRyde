@@ -39,8 +39,8 @@ const DocumentModal = ({ doc, vehicles, onClose, onSaved }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-0 sm:px-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-ink mb-4">{isEdit ? 'Edit Document' : 'Add Document'}</h2>
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -112,12 +112,12 @@ const Compliance = () => {
         />
       )}
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-display font-semibold text-ink">Compliance</h1>
-          <p className="text-slate text-sm mt-1">Track licenses, insurance, and document expiry</p>
+          <h1 className="text-xl sm:text-2xl font-display font-semibold text-ink">Compliance</h1>
+          <p className="text-slate text-xs sm:text-sm mt-0.5">Track licenses, insurance, and document expiry</p>
         </div>
-        <Button onClick={() => setModal('new')}>
+        <Button onClick={() => setModal('new')} className="self-start sm:self-auto">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -127,22 +127,22 @@ const Compliance = () => {
 
       {/* Alert banners */}
       {expiredCount > 0 && (
-        <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+        <div className="mb-4 p-3 sm:p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
           {expiredCount} document{expiredCount !== 1 ? 's' : ''} expired — action required
         </div>
       )}
       {expiringSoonCount > 0 && (
-        <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
+        <div className="mb-4 p-3 sm:p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
           {expiringSoonCount} document{expiringSoonCount !== 1 ? 's' : ''} expiring within 30 days
         </div>
       )}
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {['ALL', 'VALID', 'EXPIRING_SOON', 'EXPIRED'].map((s) => (
           <button key={s} onClick={() => setFilterStatus(s)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterStatus === s ? 'bg-ink text-white' : 'bg-white border border-cloud text-slate hover:bg-paper'}`}>
-            {s === 'ALL' ? 'All' : s.replace('_', ' ').charAt(0) + s.replace('_', ' ').slice(1).toLowerCase()}
+            {s === 'ALL' ? 'All' : s === 'EXPIRING_SOON' ? 'Expiring Soon' : s.charAt(0) + s.slice(1).toLowerCase()}
           </button>
         ))}
       </div>
@@ -156,66 +156,117 @@ const Compliance = () => {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-cloud p-10 text-center">
-          <p className="text-slate">No documents found. Add your first compliance document above.</p>
+          <p className="text-slate text-sm">No documents found. Add your first compliance document above.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-paper border-b border-cloud">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium text-slate">Document</th>
-                <th className="px-5 py-3 text-left font-medium text-slate hidden sm:table-cell">Vehicle</th>
-                <th className="px-5 py-3 text-left font-medium text-slate">Expiry</th>
-                <th className="px-5 py-3 text-left font-medium text-slate">Status</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-cloud">
-              {filtered.map((doc) => (
-                <tr key={doc.id} className="hover:bg-paper/50">
-                  <td className="px-5 py-4 font-medium text-ink">{doc.document_type}</td>
-                  <td className="px-5 py-4 text-slate hidden sm:table-cell">
-                    {doc.vehicles ? `${doc.vehicles.license_plate} · ${doc.vehicles.model}` : 'Operator-wide'}
-                  </td>
-                  <td className="px-5 py-4 text-slate">
-                    <p>{new Date(doc.expiry_date).toLocaleDateString('en-KE')}</p>
-                    <p className="text-xs">
-                      {doc.days_until_expiry < 0
-                        ? `${Math.abs(doc.days_until_expiry)}d overdue`
-                        : `${doc.days_until_expiry}d left`}
+        <>
+          {/* Mobile card list */}
+          <div className="md:hidden flex flex-col gap-3">
+            {filtered.map((doc) => (
+              <div key={doc.id} className="bg-white rounded-xl border border-cloud shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-ink">{doc.document_type}</p>
+                    <p className="text-xs text-slate mt-0.5">
+                      {doc.vehicles ? `${doc.vehicles.license_plate} · ${doc.vehicles.model}` : 'Operator-wide'}
                     </p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[doc.status]}`}>
-                      {doc.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {doc.file_url && (
-                        <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-slate hover:text-sage-500 transition-colors" title="View document">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      )}
-                      <button onClick={() => setModal(doc)} className="text-slate hover:text-ink transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button onClick={() => handleDelete(doc.id)} className="text-slate hover:text-error transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${STATUS_COLORS[doc.status]}`}>
+                    {doc.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="text-xs text-slate mb-3">
+                  <span>Expires {new Date(doc.expiry_date).toLocaleDateString('en-KE')}</span>
+                  <span className="mx-1.5">·</span>
+                  <span>
+                    {doc.days_until_expiry < 0
+                      ? `${Math.abs(doc.days_until_expiry)}d overdue`
+                      : `${doc.days_until_expiry}d left`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-cloud">
+                  {doc.file_url && (
+                    <a href={doc.file_url} target="_blank" rel="noreferrer"
+                      className="text-slate hover:text-sage-500 transition-colors" title="View document">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  )}
+                  <button onClick={() => setModal(doc)} className="text-slate hover:text-ink transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button onClick={() => handleDelete(doc.id)} className="text-slate hover:text-error transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-paper border-b border-cloud">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Document</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Vehicle</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Expiry</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Status</th>
+                  <th className="px-5 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-cloud">
+                {filtered.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-paper/50">
+                    <td className="px-5 py-4 font-medium text-ink">{doc.document_type}</td>
+                    <td className="px-5 py-4 text-slate">
+                      {doc.vehicles ? `${doc.vehicles.license_plate} · ${doc.vehicles.model}` : 'Operator-wide'}
+                    </td>
+                    <td className="px-5 py-4 text-slate">
+                      <p>{new Date(doc.expiry_date).toLocaleDateString('en-KE')}</p>
+                      <p className="text-xs">
+                        {doc.days_until_expiry < 0
+                          ? `${Math.abs(doc.days_until_expiry)}d overdue`
+                          : `${doc.days_until_expiry}d left`}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[doc.status]}`}>
+                        {doc.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {doc.file_url && (
+                          <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-slate hover:text-sage-500 transition-colors" title="View document">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )}
+                        <button onClick={() => setModal(doc)} className="text-slate hover:text-ink transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => handleDelete(doc.id)} className="text-slate hover:text-error transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

@@ -75,7 +75,7 @@ const navItems = [
   },
 ];
 
-const Sidebar = ({ collapsed, onToggle }) => {
+const Sidebar = ({ collapsed, onToggle, onMobileClose }) => {
   const { operator, signout } = useAuth();
   const navigate = useNavigate();
 
@@ -88,16 +88,30 @@ const Sidebar = ({ collapsed, onToggle }) => {
     <aside
       className={`
         h-screen bg-ink flex flex-col transition-all duration-200
-        ${collapsed ? 'w-16' : 'w-60'}
+        ${collapsed ? 'w-16' : 'w-64 lg:w-60'}
       `}
     >
-      {/* Logo */}
-      <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/10 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-bold text-sm">S</span>
+      {/* Logo + mobile close */}
+      <div className={`flex items-center border-b border-white/10 px-4 py-4 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-sm">S</span>
+          </div>
+          {!collapsed && (
+            <span className="font-display font-semibold text-white text-lg">ShuleRyde</span>
+          )}
         </div>
+        {/* Close button — mobile only */}
         {!collapsed && (
-          <span className="font-display font-semibold text-white text-lg">ShuleRyde</span>
+          <button
+            onClick={onMobileClose}
+            className="lg:hidden text-white/40 hover:text-white transition-colors p-1"
+            aria-label="Close menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         )}
       </div>
 
@@ -108,6 +122,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
             key={item.to}
             to={item.to}
             end={item.to === '/dashboard'}
+            onClick={onMobileClose}
             className={({ isActive }) => `
               flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
               transition-colors duration-150
@@ -125,7 +140,7 @@ const Sidebar = ({ collapsed, onToggle }) => {
         ))}
       </nav>
 
-      {/* User + collapse toggle */}
+      {/* User + controls */}
       <div className="border-t border-white/10 px-2 py-3 flex flex-col gap-2">
         {!collapsed && (
           <div className="px-3 py-2">
@@ -144,9 +159,10 @@ const Sidebar = ({ collapsed, onToggle }) => {
           </svg>
           {!collapsed && 'Sign out'}
         </button>
+        {/* Collapse toggle — desktop only */}
         <button
           onClick={onToggle}
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-white/40 hover:bg-white/10 hover:text-white text-sm transition-colors ${collapsed ? 'justify-center' : ''}`}
+          className={`hidden lg:flex items-center gap-3 px-3 py-2 rounded-lg text-white/40 hover:bg-white/10 hover:text-white text-sm transition-colors ${collapsed ? 'justify-center' : ''}`}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <svg className={`w-4 h-4 flex-shrink-0 transition-transform ${collapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

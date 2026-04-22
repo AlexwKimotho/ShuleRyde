@@ -17,7 +17,6 @@ const monthLabel = (m) => {
   return new Date(y, mo - 1).toLocaleDateString('en-KE', { month: 'long', year: 'numeric' });
 };
 
-// ── Print helper ───────────────────────────────────────────
 const usePrint = (ref) => () => {
   const content = ref.current?.innerHTML;
   if (!content) return;
@@ -68,40 +67,35 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
   dueDate.setDate(dueDate.getDate() + 7);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 px-4 py-8 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-cloud">
-          <h2 className="font-semibold text-ink">Invoice Preview</h2>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-none overflow-y-auto">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
+          <h2 className="font-semibold text-ink text-sm sm:text-base">Invoice Preview</h2>
           <div className="flex gap-2">
-            <Button onClick={print}>
+            <Button onClick={print} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              Print / Save PDF
+              <span className="hidden sm:inline">Print / Save PDF</span>
+              <span className="sm:hidden">Print</span>
             </Button>
-            <Button variant="secondary" onClick={onClose}>Close</Button>
+            <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </div>
-
-        {/* Document */}
-        <div className="p-8 font-sans text-ink" ref={ref}>
-          {/* Header */}
-          <div className="flex justify-between items-start mb-10 pb-5 border-b-2 border-sage-500">
+        <div className="p-5 sm:p-8 font-sans text-ink" ref={ref}>
+          <div className="flex justify-between items-start mb-8 sm:mb-10 pb-5 border-b-2 border-sage-500">
             <div>
-              <p className="text-xl font-bold text-sage-600">ShuleRyde</p>
+              <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
               <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
               <p className="text-sm text-slate">{operator?.phone}</p>
             </div>
             <div className="text-right">
-              <h1 className="text-3xl font-black tracking-widest text-ink">INVOICE</h1>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-widest text-ink">INVOICE</h1>
               <p className="text-sm text-slate mt-1">#{shortId(payment.id)}</p>
-              <span className="badge badge-pending inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">PENDING</span>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">PENDING</span>
             </div>
           </div>
-
-          {/* Meta */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <div>
               <p className="text-xs uppercase tracking-widest text-slate mb-1">Bill To</p>
               <p className="font-semibold text-ink">{payment.parents?.full_name}</p>
@@ -118,8 +112,6 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
               </div>
             </div>
           </div>
-
-          {/* Line items */}
           <table className="w-full mb-6 text-sm border-collapse">
             <thead>
               <tr className="bg-paper border-y border-cloud">
@@ -143,8 +135,6 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
               </tr>
             </tfoot>
           </table>
-
-          {/* M-Pesa */}
           {operator?.mpesa_paybill && (
             <div className="rounded-xl bg-green-50 border border-green-200 p-4 mb-6">
               <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Pay via M-Pesa</p>
@@ -152,7 +142,6 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
               <p className="text-sm text-green-800">Account: <strong>{shortId(payment.id)}</strong></p>
             </div>
           )}
-
           <p className="text-xs text-slate text-center mt-6">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
         </div>
       </div>
@@ -166,38 +155,35 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
   const print = usePrint(ref);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 px-4 py-8 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-cloud">
-          <h2 className="font-semibold text-ink">Receipt Preview</h2>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl max-h-[95vh] sm:max-h-none overflow-y-auto">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
+          <h2 className="font-semibold text-ink text-sm sm:text-base">Receipt Preview</h2>
           <div className="flex gap-2">
-            <Button onClick={print}>
+            <Button onClick={print} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-              Print / Save PDF
+              <span className="hidden sm:inline">Print / Save PDF</span>
+              <span className="sm:hidden">Print</span>
             </Button>
-            <Button variant="secondary" onClick={onClose}>Close</Button>
+            <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </div>
-
-        <div className="p-8 font-sans text-ink" ref={ref}>
-          {/* Header */}
-          <div className="flex justify-between items-start mb-10 pb-5 border-b-2 border-sage-500">
+        <div className="p-5 sm:p-8 font-sans text-ink" ref={ref}>
+          <div className="flex justify-between items-start mb-8 sm:mb-10 pb-5 border-b-2 border-sage-500">
             <div>
-              <p className="text-xl font-bold text-sage-600">ShuleRyde</p>
+              <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
               <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
               <p className="text-sm text-slate">{operator?.phone}</p>
             </div>
             <div className="text-right">
-              <h1 className="text-3xl font-black tracking-widest text-ink">RECEIPT</h1>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-widest text-ink">RECEIPT</h1>
               <p className="text-sm text-slate mt-1">#{shortId(payment.id)}</p>
               <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">PAID</span>
             </div>
           </div>
-
-          {/* Meta */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <div>
               <p className="text-xs uppercase tracking-widest text-slate mb-1">Received From</p>
               <p className="font-semibold text-ink">{payment.parents?.full_name}</p>
@@ -216,8 +202,6 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
               </div>
             </div>
           </div>
-
-          {/* Line items */}
           <table className="w-full mb-6 text-sm border-collapse">
             <thead>
               <tr className="bg-paper border-y border-cloud">
@@ -241,13 +225,10 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
               </tr>
             </tfoot>
           </table>
-
-          {/* Confirmation */}
           <div className="rounded-xl bg-green-50 border border-green-200 p-4 mb-6 text-center">
             <p className="text-green-700 font-semibold text-sm">Payment Confirmed</p>
             <p className="text-green-600 text-xs mt-0.5">This receipt confirms full payment for {monthLabel(payment.invoice_month)}.</p>
           </div>
-
           <p className="text-xs text-slate text-center mt-4">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
         </div>
       </div>
@@ -276,8 +257,8 @@ const PaymentModal = ({ parents, onClose, onSaved }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-0 sm:px-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-ink mb-4">Add Payment</h2>
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -320,8 +301,8 @@ const GenerateModal = ({ onClose, onSaved }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/40 px-0 sm:px-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-ink mb-1">Generate Monthly Invoices</h2>
         <p className="text-slate text-sm mb-4">Creates a PENDING payment for every parent who doesn't have one for this month.</p>
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
@@ -345,7 +326,7 @@ const Payments = () => {
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
-  const [docModal, setDocModal] = useState(null); // { type: 'invoice'|'receipt', payment }
+  const [docModal, setDocModal] = useState(null);
   const [marking, setMarking] = useState(null);
   const [toast, setToast] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
@@ -399,36 +380,40 @@ const Payments = () => {
         <div className="fixed top-4 right-4 z-50 bg-ink text-white px-4 py-3 rounded-xl text-sm shadow-lg">{toast}</div>
       )}
 
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-display font-semibold text-ink">Payments</h1>
-          <p className="text-slate text-sm mt-1">Track and manage parent payments</p>
+          <h1 className="text-xl sm:text-2xl font-display font-semibold text-ink">Payments</h1>
+          <p className="text-slate text-xs sm:text-sm mt-0.5">Track and manage parent payments</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setModal('generate')}>Generate Invoices</Button>
-          <Button onClick={() => setModal('add')}>
+        <div className="flex gap-2 self-start sm:self-auto">
+          <Button variant="secondary" size="sm" onClick={() => setModal('generate')}>
+            <span className="hidden sm:inline">Generate Invoices</span>
+            <span className="sm:hidden">Generate</span>
+          </Button>
+          <Button size="sm" onClick={() => setModal('add')}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Add Payment
+            Add
           </Button>
         </div>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-cloud p-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <div className="bg-white rounded-xl border border-cloud p-4 sm:p-5">
           <p className="text-xs text-slate uppercase tracking-wide mb-1">Collected</p>
-          <p className="text-2xl font-semibold text-green-600">KES {totalCollected.toLocaleString()}</p>
+          <p className="text-lg sm:text-2xl font-semibold text-green-600">KES {totalCollected.toLocaleString()}</p>
         </div>
-        <div className="bg-white rounded-xl border border-cloud p-5">
+        <div className="bg-white rounded-xl border border-cloud p-4 sm:p-5">
           <p className="text-xs text-slate uppercase tracking-wide mb-1">Pending</p>
-          <p className="text-2xl font-semibold text-amber-600">KES {totalPending.toLocaleString()}</p>
+          <p className="text-lg sm:text-2xl font-semibold text-amber-600">KES {totalPending.toLocaleString()}</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         {['ALL', 'PENDING', 'PAID'].map((s) => (
           <button key={s} onClick={() => setFilterStatus(s)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filterStatus === s ? 'bg-ink text-white' : 'bg-white border border-cloud text-slate hover:bg-paper'}`}>
@@ -436,7 +421,7 @@ const Payments = () => {
           </button>
         ))}
         <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-          className="ml-auto px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          className="sm:ml-auto px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
       </div>
 
       {loading ? (
@@ -451,64 +436,104 @@ const Payments = () => {
           <p className="text-slate">No payments found.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-paper border-b border-cloud">
-              <tr>
-                <th className="px-5 py-3 text-left font-medium text-slate">Parent</th>
-                <th className="px-5 py-3 text-left font-medium text-slate">Month</th>
-                <th className="px-5 py-3 text-left font-medium text-slate">Amount</th>
-                <th className="px-5 py-3 text-left font-medium text-slate">Status</th>
-                <th className="px-5 py-3 text-left font-medium text-slate hidden md:table-cell">Date Paid</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-cloud">
-              {filtered.map((p) => (
-                <tr key={p.id} className="hover:bg-paper/50">
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-ink">{p.parents?.full_name}</p>
+        <>
+          {/* Mobile card list */}
+          <div className="md:hidden flex flex-col gap-3">
+            {filtered.map((p) => (
+              <div key={p.id} className="bg-white rounded-xl border border-cloud shadow-sm p-4">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-ink">{p.parents?.full_name}</p>
                     <p className="text-xs text-slate">{p.parents?.phone}</p>
-                  </td>
-                  <td className="px-5 py-4 text-slate">{p.invoice_month}</td>
-                  <td className="px-5 py-4 font-medium text-ink">KES {parseFloat(p.amount).toLocaleString()}</td>
-                  <td className="px-5 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[p.status]}`}>{p.status}</span>
-                  </td>
-                  <td className="px-5 py-4 text-slate hidden md:table-cell">
-                    {p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-KE') : '—'}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {p.status === 'PENDING' && (
-                        <>
-                          <Button size="sm" variant="secondary"
-                            onClick={() => setDocModal({ type: 'invoice', payment: p })}>
-                            Invoice
-                          </Button>
-                          <Button size="sm" loading={marking === p.id} onClick={() => handleMarkPaid(p.id)}>
-                            Mark Paid
-                          </Button>
-                        </>
-                      )}
-                      {p.status === 'PAID' && (
-                        <Button size="sm" variant="secondary"
-                          onClick={() => setDocModal({ type: 'receipt', payment: p })}>
-                          Receipt
-                        </Button>
-                      )}
-                      <button onClick={() => handleDelete(p.id)} className="text-slate hover:text-error transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${STATUS_COLORS[p.status]}`}>
+                    {p.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="font-semibold text-ink">KES {parseFloat(p.amount).toLocaleString()}</span>
+                  <span className="text-slate text-xs">{p.invoice_month}</span>
+                </div>
+                <div className="flex items-center gap-2 pt-3 border-t border-cloud">
+                  {p.status === 'PENDING' && (
+                    <>
+                      <Button size="sm" variant="secondary" className="flex-1"
+                        onClick={() => setDocModal({ type: 'invoice', payment: p })}>
+                        Invoice
+                      </Button>
+                      <Button size="sm" className="flex-1" loading={marking === p.id} onClick={() => handleMarkPaid(p.id)}>
+                        Mark Paid
+                      </Button>
+                    </>
+                  )}
+                  {p.status === 'PAID' && (
+                    <Button size="sm" variant="secondary" className="flex-1"
+                      onClick={() => setDocModal({ type: 'receipt', payment: p })}>
+                      Receipt
+                    </Button>
+                  )}
+                  <button onClick={() => handleDelete(p.id)} className="text-slate hover:text-error transition-colors p-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-paper border-b border-cloud">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Parent</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Month</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Amount</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate">Status</th>
+                  <th className="px-5 py-3 text-left font-medium text-slate hidden lg:table-cell">Date Paid</th>
+                  <th className="px-5 py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-cloud">
+                {filtered.map((p) => (
+                  <tr key={p.id} className="hover:bg-paper/50">
+                    <td className="px-5 py-4">
+                      <p className="font-medium text-ink">{p.parents?.full_name}</p>
+                      <p className="text-xs text-slate">{p.parents?.phone}</p>
+                    </td>
+                    <td className="px-5 py-4 text-slate">{p.invoice_month}</td>
+                    <td className="px-5 py-4 font-medium text-ink">KES {parseFloat(p.amount).toLocaleString()}</td>
+                    <td className="px-5 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[p.status]}`}>{p.status}</span>
+                    </td>
+                    <td className="px-5 py-4 text-slate hidden lg:table-cell">
+                      {p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-KE') : '—'}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {p.status === 'PENDING' && (
+                          <>
+                            <Button size="sm" variant="secondary" onClick={() => setDocModal({ type: 'invoice', payment: p })}>Invoice</Button>
+                            <Button size="sm" loading={marking === p.id} onClick={() => handleMarkPaid(p.id)}>Mark Paid</Button>
+                          </>
+                        )}
+                        {p.status === 'PAID' && (
+                          <Button size="sm" variant="secondary" onClick={() => setDocModal({ type: 'receipt', payment: p })}>Receipt</Button>
+                        )}
+                        <button onClick={() => handleDelete(p.id)} className="text-slate hover:text-error transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

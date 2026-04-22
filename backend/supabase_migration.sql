@@ -222,6 +222,17 @@ CREATE TRIGGER trg_payments_updated_at     BEFORE UPDATE ON payments            
 CREATE TRIGGER trg_compliance_updated_at   BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_pricing_updated_at      BEFORE UPDATE ON pricing_configs      FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+-- SUPER ADMINS
+CREATE TABLE IF NOT EXISTS super_admins (
+  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email      TEXT UNIQUE NOT NULL,
+  full_name  TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE super_admins ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "super_admins_self" ON super_admins FOR SELECT USING (auth.uid() = id);
+
 -- ============================================================
 -- PATCHES — run these if the initial migration was applied
 -- before these columns/tables were added
@@ -229,3 +240,10 @@ CREATE TRIGGER trg_pricing_updated_at      BEFORE UPDATE ON pricing_configs     
 
 -- Patch: add amount_collected to payments if missing
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_collected DECIMAL NOT NULL DEFAULT 0;
+
+-- Patch: seed super admin (run after lexkimothowachira@gmail.com exists in auth.users)
+INSERT INTO super_admins (id, email, full_name)
+SELECT id, email, 'Alex Kimotho'
+FROM auth.users
+WHERE email = 'lexkimothowachira@gmail.com'
+ON CONFLICT (id) DO NOTHING;

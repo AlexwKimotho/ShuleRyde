@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext';
 import DashboardLayout from './components/layout/DashboardLayout';
+import AdminLayout from './components/layout/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import Vehicles from './pages/Vehicles';
 import Parents from './pages/Parents';
@@ -9,6 +11,9 @@ import Settings from './pages/Settings';
 import Finance from './pages/Finance';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import AdminSignIn from './pages/AdminSignIn';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminOperatorDetail from './pages/AdminOperatorDetail';
 
 const Spinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-paper">
@@ -26,12 +31,20 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+const AdminProtectedRoute = ({ children }) => {
+  const { admin, loading } = useAdminAuth();
+  if (loading) return <Spinner />;
+  if (!admin) return <Navigate to="/admin/signin" replace />;
+  return children;
+};
+
 const AppRoutes = () => {
   const { operator, loading } = useAuth();
   if (loading) return <Spinner />;
 
   return (
     <Routes>
+      {/* Operator routes */}
       <Route path="/signin" element={operator ? <Navigate to="/dashboard" replace /> : <SignIn />} />
       <Route path="/signup" element={operator ? <Navigate to="/dashboard" replace /> : <SignUp />} />
 
@@ -47,6 +60,17 @@ const AppRoutes = () => {
         <Route path="settings" element={<Settings />} />
       </Route>
 
+      {/* Admin routes */}
+      <Route path="/admin/signin" element={<AdminSignIn />} />
+      <Route
+        path="/admin"
+        element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}
+      >
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="operators/:id" element={<AdminOperatorDetail />} />
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+      </Route>
+
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
@@ -56,7 +80,9 @@ const AppRoutes = () => {
 const App = () => (
   <BrowserRouter>
     <AuthProvider>
-      <AppRoutes />
+      <AdminAuthProvider>
+        <AppRoutes />
+      </AdminAuthProvider>
     </AuthProvider>
   </BrowserRouter>
 );

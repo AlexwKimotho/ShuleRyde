@@ -1,6 +1,30 @@
 const { validationResult } = require('express-validator');
 const supabase = require('../config/database');
 
+// Sign in via the Supabase REST API directly so the service-role client's
+// in-memory session is never overwritten by the user's JWT.
+const supabaseSignIn = async (email, password) => {
+  const res = await fetch(
+    `${process.env.SUPABASE_URL}/auth/v1/token?grant_type=password`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({ email, password }),
+    }
+  );
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = data.error_description || data.msg || 'Invalid email or password';
+    const err = new Error(msg);
+    err.status = 401;
+    throw err;
+  }
+  return data; // { access_token, refresh_token, user, ... }
+};
+
 const signup = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -8,7 +32,6 @@ const signup = async (req, res, next) => {
 
     const { email, password, full_name, business_name, phone } = req.body;
 
-    // Create user in Supabase Auth (auto-confirms email via admin API)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -22,21 +45,22 @@ const signup = async (req, res, next) => {
       throw authError;
     }
 
-    // Create operator profile row
     const { data: operator, error: profileError } = await supabase
       .from('operators')
       .insert({ id: authData.user.id, email, full_name, business_name, phone })
       .select('id, email, full_name, business_name, phone, subscription_status, created_at')
       .single();
 
-    if (profileError) throw profileError;
+    if (profileError) {
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw profileError;
+    }
 
-    // Sign in to get an access token the client can use
-    const { data: session, error: sessionError } = await supabase.auth.signInWithPassword({ email, password });
-    if (sessionError) throw sessionError;
+    const session = await supabaseSignIn(email, password);
 
-    res.status(201).json({ token: session.session.access_token, operator });
+    res.status(201).json({ token: session.access_token, operator });
   } catch (err) {
+    if (err.status === 401) return res.status(401).json({ error: err.message });
     next(err);
   }
 };
@@ -48,19 +72,23 @@ const signin = async (req, res, next) => {
 
     const { email, password } = req.body;
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return res.status(401).json({ error: 'Invalid email or password' });
+    let session;
+    try {
+      session = await supabaseSignIn(email, password);
+    } catch {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
 
     const { data: operator, error: profileError } = await supabase
       .from('operators')
       .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
-      .eq('id', data.user.id)
+      .eq('id', session.user.id)
       .maybeSingle();
 
     if (profileError) throw profileError;
     if (!operator) return res.status(404).json({ error: 'Operator profile not found' });
 
-    res.json({ token: data.session.access_token, operator });
+    res.json({ token: session.access_token, operator });
   } catch (err) {
     next(err);
   }

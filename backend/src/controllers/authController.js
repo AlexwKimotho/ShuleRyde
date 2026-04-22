@@ -48,7 +48,7 @@ const signup = async (req, res, next) => {
     const { data: operator, error: profileError } = await supabase
       .from('operators')
       .insert({ id: authData.user.id, email, full_name, business_name, phone })
-      .select('id, email, full_name, business_name, phone, subscription_status, created_at')
+      .select('id, email, full_name, business_name, phone, subscription_status, permissions, created_at')
       .single();
 
     if (profileError) {
@@ -81,7 +81,7 @@ const signin = async (req, res, next) => {
 
     const { data: operator, error: profileError } = await supabase
       .from('operators')
-      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
+      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, permissions, created_at')
       .eq('id', session.user.id)
       .maybeSingle();
 
@@ -98,7 +98,7 @@ const getMe = async (req, res, next) => {
   try {
     const { data: operator, error } = await supabase
       .from('operators')
-      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
+      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, permissions, created_at')
       .eq('id', req.operator.id)
       .maybeSingle();
 

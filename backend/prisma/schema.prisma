@@ -95,6 +95,7 @@ model Payment {
   id                   String    @id @default(uuid())
   parent_id            String
   amount               Decimal
+  amount_collected     Decimal   @default(0)
   status               String    @default("PENDING")
   payment_date         DateTime?
   payment_method       String?

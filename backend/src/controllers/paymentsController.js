@@ -37,7 +37,7 @@ const createPayment = async (req, res, next) => {
 
     const { data: payment, error } = await supabase
       .from('payments')
-      .insert({ parent_id, amount, invoice_month, payment_method: payment_method || null })
+      .insert({ parent_id, amount, invoice_month, payment_method: payment_method || null, amount_collected: 0 })
       .select('*, parents(id, full_name, phone)')
       .single();
 
@@ -53,6 +53,9 @@ const markAsPaid = async (req, res, next) => {
     const { id } = req.params;
     const { payment_method } = req.body;
 
+    const parentIds = await getParentIds(req.operator.id);
+    if (!parentIds.length) return res.status(404).json({ error: 'Payment not found' });
+
     const { data: payment, error } = await supabase
       .from('payments')
       .update({
@@ -61,11 +64,52 @@ const markAsPaid = async (req, res, next) => {
         payment_method: payment_method || 'CASH',
       })
       .eq('id', id)
+      .in('parent_id', parentIds)
       .select('*, parents(id, full_name, phone)')
       .single();
 
     if (error) throw error;
+    if (!payment) return res.status(404).json({ error: 'Payment not found' });
     res.json({ payment });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const recordPartialPayment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { amount_paid, payment_method } = req.body;
+
+    if (!amount_paid || parseFloat(amount_paid) <= 0) {
+      return res.status(400).json({ error: 'Payment amount must be greater than 0' });
+    }
+
+    const parentIds = await getParentIds(req.operator.id);
+    if (!parentIds.length) return res.status(404).json({ error: 'Payment not found' });
+
+    const { data: payment } = await supabase
+      .from('payments').select('*').eq('id', id).in('parent_id', parentIds).single();
+    if (!payment) return res.status(404).json({ error: 'Payment not found' });
+
+    const newCollected = (parseFloat(payment.amount_collected || 0) + parseFloat(amount_paid)).toFixed(2);
+    const totalDue = parseFloat(payment.amount);
+    const newStatus = parseFloat(newCollected) >= totalDue ? 'PAID' : 'PARTIALLY_PAID';
+
+    const { data: updated, error } = await supabase
+      .from('payments')
+      .update({
+        amount_collected: newCollected,
+        status: newStatus,
+        payment_date: newStatus === 'PAID' ? new Date().toISOString() : payment.payment_date,
+        payment_method: payment_method || 'CASH',
+      })
+      .eq('id', id)
+      .select('*, parents(id, full_name, phone)')
+      .single();
+
+    if (error) throw error;
+    res.json({ payment: updated });
   } catch (err) {
     next(err);
   }
@@ -74,7 +118,10 @@ const markAsPaid = async (req, res, next) => {
 const deletePayment = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('payments').delete().eq('id', id);
+    const parentIds = await getParentIds(req.operator.id);
+    if (!parentIds.length) return res.status(404).json({ error: 'Payment not found' });
+
+    const { error } = await supabase.from('payments').delete().eq('id', id).in('parent_id', parentIds);
     if (error) throw error;
     res.json({ message: 'Payment deleted' });
   } catch (err) {
@@ -100,7 +147,7 @@ const generateMonthly = async (req, res, next) => {
 
     if (!toCreate.length) return res.json({ created: 0, payments: [] });
 
-    const rows = toCreate.map((parent_id) => ({ parent_id, amount, invoice_month: month, status: 'PENDING' }));
+    const rows = toCreate.map((parent_id) => ({ parent_id, amount, invoice_month: month, status: 'PENDING', amount_collected: 0 }));
     const { data: payments, error } = await supabase
       .from('payments').insert(rows).select('*, parents(id, full_name, phone)');
 
@@ -111,4 +158,4 @@ const generateMonthly = async (req, res, next) => {
   }
 };
 
-module.exports = { getPayments, createPayment, markAsPaid, deletePayment, generateMonthly };
+module.exports = { getPayments, createPayment, markAsPaid, recordPartialPayment, deletePayment, generateMonthly };

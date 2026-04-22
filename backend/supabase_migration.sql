@@ -71,6 +71,7 @@ CREATE TABLE payments (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id            UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
   amount               DECIMAL NOT NULL,
+  amount_collected     DECIMAL NOT NULL DEFAULT 0,
   status               TEXT NOT NULL DEFAULT 'PENDING',
   payment_date         TIMESTAMPTZ,
   payment_method       TEXT,
@@ -149,16 +150,15 @@ CREATE INDEX activity_logs_event_type_idx ON activity_logs(event_type);
 -- error on signup when no policies are defined).
 -- ============================================================
 
-ALTER TABLE operators           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehicles            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE parents             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE children            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE operators            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vehicles             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parents              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE children             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE compliance_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE compliance_alerts   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE check_ins           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE activity_logs       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pricing_configs     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE compliance_alerts    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE check_ins            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs        ENABLE ROW LEVEL SECURITY;
 
 -- Operators: each user can only access their own row
 CREATE POLICY "operators_select_own" ON operators FOR SELECT USING (auth.uid() = id);
@@ -203,6 +203,8 @@ CREATE TABLE pricing_configs (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE pricing_configs ENABLE ROW LEVEL SECURITY;
+
 -- Auto-update updated_at on row changes
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
@@ -219,3 +221,11 @@ CREATE TRIGGER trg_children_updated_at     BEFORE UPDATE ON children            
 CREATE TRIGGER trg_payments_updated_at     BEFORE UPDATE ON payments             FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_compliance_updated_at   BEFORE UPDATE ON compliance_documents FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_pricing_updated_at      BEFORE UPDATE ON pricing_configs      FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- PATCHES — run these if the initial migration was applied
+-- before these columns/tables were added
+-- ============================================================
+
+-- Patch: add amount_collected to payments if missing
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_collected DECIMAL NOT NULL DEFAULT 0;

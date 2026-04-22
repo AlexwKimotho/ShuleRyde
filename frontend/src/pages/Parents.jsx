@@ -11,6 +11,7 @@ const StudentModal = ({ parentId, student, vehicles, onClose, onSaved }) => {
   const [form, setForm] = useState({
     full_name: student?.full_name || '',
     school_name: student?.school_name || '',
+    admission_number: student?.admission_number || '',
     pickup_location: student?.pickup_location || '',
     dropoff_location: student?.dropoff_location || '',
     vehicle_id: student?.vehicle_id || '',
@@ -38,6 +39,7 @@ const StudentModal = ({ parentId, student, vehicles, onClose, onSaved }) => {
         {error && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input id="full_name" name="full_name" label="Student Name" value={form.full_name} onChange={handleChange} />
+          <Input id="admission_number" name="admission_number" label="Admission Number (optional)" placeholder="e.g. ADM-2024-001" value={form.admission_number} onChange={handleChange} />
           <Input id="school_name" name="school_name" label="School" value={form.school_name} onChange={handleChange} />
           <Input id="pickup_location" name="pickup_location" label="Pickup Location" value={form.pickup_location} onChange={handleChange} />
           <Input id="dropoff_location" name="dropoff_location" label="Drop-off Location" value={form.dropoff_location} onChange={handleChange} />
@@ -143,6 +145,7 @@ const ParentViewModal = ({ parent, onClose }) => (
                 <div key={s.id} className="bg-white rounded-lg px-3 py-2.5 border border-cloud">
                   <p className="text-sm font-medium text-ink">{s.full_name}</p>
                   <p className="text-xs text-slate mt-0.5">
+                    {s.admission_number && <span className="mr-2 text-ink/60">#{s.admission_number}</span>}
                     {s.school_name || 'No school set'}
                     {s.vehicles && <span className="text-sage-600"> · {s.vehicles.license_plate}{s.vehicles.route ? ` (${s.vehicles.route})` : ''}</span>}
                     {!s.vehicles && <span className="text-amber-600"> · No route</span>}

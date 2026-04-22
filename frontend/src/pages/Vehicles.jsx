@@ -5,10 +5,13 @@ import Input from '../components/ui/Input';
 
 const STATUS_COLORS = {
   ACTIVE: 'bg-green-100 text-green-700',
+  MOVING: 'bg-blue-100 text-blue-700',
   IDLE: 'bg-cloud text-slate',
   MAINTENANCE: 'bg-amber-100 text-amber-700',
   SUSPENDED: 'bg-red-100 text-red-700',
 };
+
+const STATUS_OPTIONS = ['ACTIVE', 'MOVING', 'IDLE', 'MAINTENANCE', 'SUSPENDED'];
 
 const VehicleModal = ({ vehicle, onClose, onSaved }) => {
   const isEdit = Boolean(vehicle?.id);
@@ -133,6 +136,7 @@ const Vehicles = () => {
   const [editTarget, setEditTarget] = useState(null);
   const [viewTarget, setViewTarget] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(null);
 
   const load = async () => {
     try {
@@ -152,6 +156,15 @@ const Vehicles = () => {
       setVehicles((v) => v.filter((x) => x.id !== id));
     } catch {}
     finally { setDeleting(null); }
+  };
+
+  const handleStatusChange = async (id, newStatus) => {
+    setUpdatingStatus(id);
+    try {
+      await vehiclesAPI.update(id, { status: newStatus });
+      setVehicles((v) => v.map((x) => x.id === id ? { ...x, status: newStatus } : x));
+    } catch {}
+    finally { setUpdatingStatus(null); }
   };
 
   const handleSaved = () => { setModalOpen(false); setEditTarget(null); load(); };
@@ -216,9 +229,14 @@ const Vehicles = () => {
                     <p className="text-sm text-slate mt-0.5">{v.model}</p>
                     {v.route && <p className="text-xs text-slate mt-1">{v.route}</p>}
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0 ${STATUS_COLORS[v.status]}`}>
-                    {v.status}
-                  </span>
+                  <select
+                    value={v.status}
+                    disabled={updatingStatus === v.id}
+                    onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                    className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sage-500 ${STATUS_COLORS[v.status]} ${updatingStatus === v.id ? 'opacity-50' : ''}`}
+                  >
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-cloud">
                   <p className="text-xs text-slate">{v.children?.length ?? 0} / {v.max_capacity} students</p>
@@ -266,7 +284,14 @@ const Vehicles = () => {
                     <td className="px-5 py-4 text-slate">{v.route || '—'}</td>
                     <td className="px-5 py-4 text-slate">{v.children?.length ?? 0} / {v.max_capacity}</td>
                     <td className="px-5 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v.status]}`}>{v.status}</span>
+                      <select
+                        value={v.status}
+                        disabled={updatingStatus === v.id}
+                        onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                        className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-sage-500 ${STATUS_COLORS[v.status]} ${updatingStatus === v.id ? 'opacity-50' : ''}`}
+                      >
+                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">

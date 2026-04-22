@@ -47,21 +47,23 @@ const SignIn = () => {
   };
 
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-sage-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
-            </div>
-            <span className="text-2xl font-display font-semibold text-ink">ShuleRyde</span>
-          </div>
-          <h1 className="text-2xl font-display font-semibold text-ink">Welcome back</h1>
-          <p className="text-slate text-sm mt-1">Sign in to your operator account</p>
-        </div>
+    <div className="min-h-screen flex">
 
-        <div className="bg-white rounded-2xl shadow-md p-8 border border-cloud">
+      {/* ── Left panel — form ─────────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 bg-white">
+        <div className="w-full max-w-sm">
+          {/* Logo */}
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 mb-6">
+              <div className="w-9 h-9 bg-sage-500 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-base">S</span>
+              </div>
+              <span className="text-xl font-display font-semibold text-ink">ShuleRyde</span>
+            </div>
+            <h1 className="text-2xl font-display font-semibold text-ink">Welcome back!</h1>
+            <p className="text-slate text-sm mt-1">Sign in to your operator account</p>
+          </div>
+
           {serverError && (
             <div className="mb-4 p-3 rounded-lg bg-terracotta-50 border border-terracotta-100 text-error text-sm">
               {serverError}
@@ -113,11 +115,80 @@ const SignIn = () => {
           <p className="text-center text-sm text-slate mt-6">
             Don&apos;t have an account?{' '}
             <Link to="/signup" className="text-sage-500 hover:text-sage-700 font-medium">
-              Sign up
+              Sign Up
             </Link>
+          </p>
+
+          <div className="text-center mt-4">
+            <Link to="/admin/signin" className="text-xs text-slate/50 hover:text-slate transition-colors">
+              Admin Portal →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right panel — visual ──────────────────────────── */}
+      <div
+        className="hidden lg:flex flex-1 relative overflow-hidden flex-col items-start justify-end p-12"
+        style={{
+          background: 'linear-gradient(145deg, #1a3a2e 0%, #2d5a45 30%, #4a7c5e 60%, #6B9080 100%)',
+        }}
+      >
+        {/* Decorative blobs */}
+        <div className="absolute top-[-80px] right-[-80px] w-80 h-80 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #a8d5b5 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 left-[-60px] w-64 h-64 rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #E07A5F 0%, transparent 70%)' }} />
+        <div className="absolute bottom-32 right-12 w-48 h-48 rounded-full opacity-15"
+          style={{ background: 'radial-gradient(circle, #6B9080 0%, transparent 70%)' }} />
+
+        {/* Floating stat cards */}
+        <div className="absolute top-16 right-16 flex flex-col gap-3">
+          <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl px-5 py-3.5 text-white shadow-lg">
+            <p className="text-xs text-white/60 uppercase tracking-widest mb-0.5">Active Routes</p>
+            <p className="text-2xl font-bold">12</p>
+          </div>
+        </div>
+
+        <div className="absolute top-1/2 -translate-y-1/2 right-8 flex flex-col gap-3">
+          <div className="backdrop-blur-md bg-white/15 border border-white/25 rounded-2xl px-5 py-4 text-white shadow-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-sage-500/80 flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs text-white/60">Students</p>
+                <p className="font-bold text-lg leading-none">247</p>
+              </div>
+            </div>
+            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+              <div className="h-full bg-sage-400 rounded-full" style={{ width: '78%' }} />
+            </div>
+            <p className="text-xs text-white/50 mt-1">78% collection rate</p>
+          </div>
+
+          <div className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl px-5 py-3.5 text-white shadow-lg">
+            <p className="text-xs text-white/60 uppercase tracking-widest mb-0.5">Fleet</p>
+            <p className="text-2xl font-bold">8 <span className="text-sm font-normal text-white/60">vehicles</span></p>
+          </div>
+        </div>
+
+        {/* Bottom tagline */}
+        <div className="relative z-10">
+          <h2 className="text-4xl font-display font-bold text-white leading-tight mb-3">
+            Manage your fleet.<br />Track payments.<br />Stay compliant.
+          </h2>
+          <p className="text-white/60 text-base max-w-xs">
+            Everything a Nairobi school transport operator needs, in one place.
+          </p>
+          <p className="text-white/30 text-xs mt-6 tracking-widest uppercase">
+            Routes · Payments · Compliance · Students
           </p>
         </div>
       </div>
+
     </div>
   );
 };

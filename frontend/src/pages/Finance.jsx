@@ -519,6 +519,7 @@ const Finance = () => {
   const [toast, setToast] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterMonth, setFilterMonth] = useState('');
+  const [filterName, setFilterName] = useState('');
   const [viewModal, setViewModal] = useState(null);
   const [receiptModal, setReceiptModal] = useState(null);
 
@@ -580,6 +581,7 @@ const Finance = () => {
   const filtered = payments.filter((p) => {
     if (filterStatus !== 'ALL' && p.status !== filterStatus) return false;
     if (filterMonth && p.invoice_month !== filterMonth) return false;
+    if (filterName && !p.parents?.full_name?.toLowerCase().includes(filterName.toLowerCase())) return false;
     return true;
   });
 
@@ -843,8 +845,17 @@ const Finance = () => {
               {s === 'ALL' ? 'All' : s === 'PARTIALLY_PAID' ? 'Partially Paid' : s.charAt(0) + s.slice(1).toLowerCase()}
             </button>
           ))}
-          <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
-            className="sm:ml-auto px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+            <input
+              type="text"
+              placeholder="Search by name…"
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 w-44"
+            />
+            <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
+              className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          </div>
         </div>
 
         {loading ? (

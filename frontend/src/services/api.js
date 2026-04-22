@@ -75,4 +75,33 @@ export const financeAPI = {
   getFinancialSummary: () => api.get('/finance/summary'),
 };
 
+const adminApi = axios.create({ baseURL: API_URL });
+
+adminApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+adminApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('admin_token');
+      window.location.href = '/admin/signin';
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const adminAPI = {
+  signin: (data) => adminApi.post('/admin/signin', data),
+  getMe: () => adminApi.get('/admin/me'),
+  getOperators: () => adminApi.get('/admin/operators'),
+  getOperatorDetail: (id) => adminApi.get(`/admin/operators/${id}`),
+  freezeOperator: (id) => adminApi.patch(`/admin/operators/${id}/freeze`),
+  unfreezeOperator: (id) => adminApi.patch(`/admin/operators/${id}/unfreeze`),
+  deleteOperator: (id) => adminApi.delete(`/admin/operators/${id}`),
+};
+
 export default api;

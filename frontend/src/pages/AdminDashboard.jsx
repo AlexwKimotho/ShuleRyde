@@ -11,6 +11,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [operators, setOperators] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [actioning, setActioning] = useState(null);
   const [search, setSearch] = useState('');
 
@@ -18,8 +19,9 @@ const AdminDashboard = () => {
     try {
       const { data } = await adminAPI.getOperators();
       setOperators(data.operators);
-    } catch {}
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Failed to load operators');
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
@@ -76,6 +78,12 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          <strong>Error loading operators:</strong> {error}
+        </div>
+      )}
+
       {/* Search */}
       <div className="mb-4">
         <input
@@ -96,7 +104,7 @@ const AdminDashboard = () => {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-cloud p-10 text-center">
-          <p className="text-slate text-sm">{search ? 'No operators match your search.' : 'No operators registered yet.'}</p>
+          <p className="text-slate text-sm">{search ? 'No operators match your search.' : 'No operators have signed up yet.'}</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">

@@ -101,6 +101,7 @@ export const adminAPI = {
   getOperatorDetail: (id) => adminApi.get(`/admin/operators/${id}`),
   freezeOperator: (id) => adminApi.patch(`/admin/operators/${id}/freeze`),
   unfreezeOperator: (id) => adminApi.patch(`/admin/operators/${id}/unfreeze`),
+  updatePermissions: (id, data) => adminApi.patch(`/admin/operators/${id}/permissions`, data),
   deleteOperator: (id) => adminApi.delete(`/admin/operators/${id}`),
 };
 

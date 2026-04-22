@@ -59,7 +59,7 @@ const getOperators = async (req, res, next) => {
       { data: allParents },
     ] = await Promise.all([
       supabase.from('operators')
-        .select('id, email, full_name, business_name, phone, subscription_status, suspension_date, created_at')
+        .select('id, email, full_name, business_name, phone, subscription_status, suspension_date, permissions, created_at')
         .order('created_at', { ascending: false }),
       supabase.from('vehicles').select('operator_id'),
       supabase.from('parents').select('operator_id'),
@@ -97,7 +97,7 @@ const getOperatorDetail = async (req, res, next) => {
 
     const { data: operator, error } = await supabase
       .from('operators')
-      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, suspension_date, created_at')
+      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, suspension_date, permissions, created_at')
       .eq('id', id)
       .maybeSingle();
 
@@ -203,6 +203,34 @@ const unfreezeOperator = async (req, res, next) => {
   }
 };
 
+const updatePermissions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { vehicles, parents, compliance, finance } = req.body;
+
+    const permissions = {
+      vehicles: vehicles !== false,
+      parents: parents !== false,
+      compliance: compliance !== false,
+      finance: finance !== false,
+    };
+
+    const { data: operator, error } = await supabase
+      .from('operators')
+      .update({ permissions })
+      .eq('id', id)
+      .select('id, permissions')
+      .single();
+
+    if (error) throw error;
+    if (!operator) return res.status(404).json({ error: 'Operator not found' });
+
+    res.json({ operator });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const deleteOperator = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -216,4 +244,4 @@ const deleteOperator = async (req, res, next) => {
   }
 };
 
-module.exports = { signin, getMe, getOperators, getOperatorDetail, freezeOperator, unfreezeOperator, deleteOperator };
+module.exports = { signin, getMe, getOperators, getOperatorDetail, freezeOperator, unfreezeOperator, updatePermissions, deleteOperator };

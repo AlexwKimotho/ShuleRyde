@@ -5,6 +5,7 @@ const navItems = [
   {
     label: 'Dashboard',
     to: '/dashboard',
+    permission: null,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -15,6 +16,7 @@ const navItems = [
   {
     label: 'Vehicles',
     to: '/dashboard/vehicles',
+    permission: 'vehicles',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -25,6 +27,7 @@ const navItems = [
   {
     label: 'Parents',
     to: '/dashboard/parents',
+    permission: 'parents',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -35,6 +38,7 @@ const navItems = [
   {
     label: 'Compliance',
     to: '/dashboard/compliance',
+    permission: 'compliance',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -45,6 +49,7 @@ const navItems = [
   {
     label: 'Finance',
     to: '/dashboard/finance',
+    permission: 'finance',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -55,6 +60,7 @@ const navItems = [
   {
     label: 'Settings',
     to: '/dashboard/settings',
+    permission: null,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -107,7 +113,7 @@ const Sidebar = ({ collapsed, onToggle, onMobileClose }) => {
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-2 flex flex-col gap-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {navItems.filter((item) => !item.permission || operator?.permissions?.[item.permission] !== false).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

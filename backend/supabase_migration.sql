@@ -241,6 +241,9 @@ CREATE POLICY "super_admins_self" ON super_admins FOR SELECT USING (auth.uid() =
 -- Patch: add amount_collected to payments if missing
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_collected DECIMAL NOT NULL DEFAULT 0;
 
+-- Patch: add permissions to operators (controls which modules operator can access)
+ALTER TABLE operators ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{"vehicles": true, "parents": true, "compliance": true, "finance": true}';
+
 -- Patch: seed super admin (run after lexkimothowachira@gmail.com exists in auth.users)
 INSERT INTO super_admins (id, email, full_name)
 SELECT id, email, 'Alex Kimotho'

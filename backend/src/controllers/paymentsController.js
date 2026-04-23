@@ -15,7 +15,7 @@ const getPayments = async (req, res, next) => {
       .from('payments')
       .select('*, parents(id, full_name, phone), children(id, full_name), payment_transactions(id, amount, payment_method, notes, paid_at)')
       .in('parent_id', parentIds)
-      .order('created_at', { ascending: false });
+      .order('updated_at', { ascending: false });
 
     if (error) throw error;
     res.json({ payments });

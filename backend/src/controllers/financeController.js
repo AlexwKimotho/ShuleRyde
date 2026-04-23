@@ -18,7 +18,6 @@ const getBalanceSheet = async (req, res, next) => {
 
     if (error) throw error;
 
-    // Monthly breakdown
     const monthMap = {};
     for (const p of payments || []) {
       const m = p.invoice_month;
@@ -33,7 +32,6 @@ const getBalanceSheet = async (req, res, next) => {
     }
 
     const monthly = Object.values(monthMap).sort((a, b) => b.month.localeCompare(a.month));
-
     const totalInvoiced = monthly.reduce((s, m) => s + m.invoiced, 0);
     const totalCollected = monthly.reduce((s, m) => s + m.collected, 0);
     const totalPending = monthly.reduce((s, m) => s + m.pending, 0);
@@ -52,50 +50,64 @@ const getProfitAndLoss = async (req, res, next) => {
   try {
     const operatorId = req.operator.id;
     const { year } = req.query;
+    const currentYear = year || new Date().getFullYear().toString();
 
     const { data: parents } = await supabase.from('parents').select('id').eq('operator_id', operatorId);
     const parentIds = (parents || []).map((p) => p.id);
 
-    if (!parentIds.length) {
-      return res.json(pnlZeroed());
-    }
-
-    const { data: payments, error } = await supabase
-      .from('payments')
-      .select('amount, status, invoice_month, amount_collected')
-      .in('parent_id', parentIds);
-
-    if (error) throw error;
-
+    // Fetch payments for this year
     let totalRevenue = 0;
     let totalCollected = 0;
-    let monthlyData = {};
+    const monthlyData = {};
 
-    for (const p of payments || []) {
-      if (year && !p.invoice_month.startsWith(year)) continue;
-      const m = p.invoice_month;
-      if (!monthlyData[m]) monthlyData[m] = { month: m, revenue: 0, collected: 0 };
-      const amt = parseFloat(p.amount);
-      const collected = parseFloat(p.amount_collected || 0);
-      monthlyData[m].revenue += amt;
-      monthlyData[m].collected += p.status === 'PAID' ? amt : collected;
-      totalRevenue += amt;
-      totalCollected += p.status === 'PAID' ? amt : collected;
+    if (parentIds.length) {
+      const { data: payments, error } = await supabase
+        .from('payments')
+        .select('amount, status, invoice_month, amount_collected')
+        .in('parent_id', parentIds);
+
+      if (error) throw error;
+
+      for (const p of payments || []) {
+        if (!p.invoice_month.startsWith(currentYear)) continue;
+        const m = p.invoice_month;
+        if (!monthlyData[m]) monthlyData[m] = { month: m, revenue: 0, collected: 0, expenses: 0 };
+        const amt = parseFloat(p.amount);
+        const collected = parseFloat(p.amount_collected || 0);
+        monthlyData[m].revenue += amt;
+        monthlyData[m].collected += p.status === 'PAID' ? amt : collected;
+        totalRevenue += amt;
+        totalCollected += p.status === 'PAID' ? amt : collected;
+      }
     }
 
-    // Estimated expenses (typically 20-30% of revenue for transport business)
-    const estimatedExpenses = totalRevenue * 0.25;
-    const grossProfit = totalRevenue - estimatedExpenses;
+    // Fetch actual expenses for this year
+    const { data: expensesData } = await supabase
+      .from('expenses')
+      .select('amount, expense_date')
+      .eq('operator_id', operatorId)
+      .gte('expense_date', `${currentYear}-01-01`)
+      .lte('expense_date', `${currentYear}-12-31`);
+
+    let totalExpenses = 0;
+    for (const e of expensesData || []) {
+      const m = e.expense_date.slice(0, 7);
+      if (!monthlyData[m]) monthlyData[m] = { month: m, revenue: 0, collected: 0, expenses: 0 };
+      monthlyData[m].expenses += parseFloat(e.amount);
+      totalExpenses += parseFloat(e.amount);
+    }
+
+    const grossProfit = totalCollected - totalExpenses;
     const netProfit = grossProfit;
 
     res.json({
       totalRevenue: parseFloat(totalRevenue.toFixed(2)),
       totalCollected: parseFloat(totalCollected.toFixed(2)),
-      estimatedExpenses: parseFloat(estimatedExpenses.toFixed(2)),
+      totalExpenses: parseFloat(totalExpenses.toFixed(2)),
       grossProfit: parseFloat(grossProfit.toFixed(2)),
       operatingIncome: parseFloat(grossProfit.toFixed(2)),
       netProfit: parseFloat(netProfit.toFixed(2)),
-      profitMargin: totalRevenue > 0 ? parseFloat(((netProfit / totalRevenue) * 100).toFixed(2)) : 0,
+      profitMargin: totalCollected > 0 ? parseFloat(((netProfit / totalCollected) * 100).toFixed(2)) : 0,
       collectionRate: totalRevenue > 0 ? parseFloat(((totalCollected / totalRevenue) * 100).toFixed(2)) : 0,
       monthly: Object.values(monthlyData).sort((a, b) => b.month.localeCompare(a.month)),
     });
@@ -107,19 +119,21 @@ const getProfitAndLoss = async (req, res, next) => {
 const getFinancialSummary = async (req, res, next) => {
   try {
     const operatorId = req.operator.id;
+    const { month } = req.query; // e.g. "2026-04" — optional monthly filter
 
     const { data: parents } = await supabase.from('parents').select('id').eq('operator_id', operatorId);
     const parentIds = (parents || []).map((p) => p.id);
 
-    if (!parentIds.length) {
-      return res.json(financialSummaryZeroed());
-    }
+    if (!parentIds.length) return res.json(financialSummaryZeroed());
 
-    const { data: payments, error } = await supabase
+    let paymentQuery = supabase
       .from('payments')
       .select('amount, status, amount_collected')
       .in('parent_id', parentIds);
 
+    if (month) paymentQuery = paymentQuery.eq('invoice_month', month);
+
+    const { data: payments, error } = await paymentQuery;
     if (error) throw error;
 
     let totalInvoiced = 0;
@@ -134,7 +148,6 @@ const getFinancialSummary = async (req, res, next) => {
       const amt = parseFloat(p.amount);
       const collected = parseFloat(p.amount_collected || 0);
       totalInvoiced += amt;
-
       if (p.status === 'PAID') {
         totalCollected += amt;
         paidInvoices += 1;
@@ -148,15 +161,31 @@ const getFinancialSummary = async (req, res, next) => {
       }
     }
 
-    // Balance sheet: assets = liabilities + equity
-    const assets = totalCollected; // cash collected
-    const liabilities = pendingInvoices + totalPartiallyPaid; // outstanding payments
-    const equity = assets - liabilities;
+    // Fetch actual expenses for the period
+    let expenseQuery = supabase
+      .from('expenses')
+      .select('amount')
+      .eq('operator_id', operatorId);
+
+    if (month) {
+      expenseQuery = expenseQuery
+        .gte('expense_date', `${month}-01`)
+        .lte('expense_date', `${month}-31`);
+    }
+
+    const { data: expensesData } = await expenseQuery;
+    const totalExpenses = (expensesData || []).reduce((s, e) => s + parseFloat(e.amount), 0);
+
+    const assets = totalCollected;
+    const liabilities = pendingInvoices + totalPartiallyPaid;
+    const businessValue = assets - liabilities - totalExpenses;
 
     res.json({
       assets: parseFloat(assets.toFixed(2)),
       liabilities: parseFloat(liabilities.toFixed(2)),
-      equity: parseFloat(equity.toFixed(2)),
+      businessValue: parseFloat(businessValue.toFixed(2)),
+      equity: parseFloat(businessValue.toFixed(2)), // backward compat
+      totalExpenses: parseFloat(totalExpenses.toFixed(2)),
       totalInvoiced: parseFloat(totalInvoiced.toFixed(2)),
       totalCollected: parseFloat(totalCollected.toFixed(2)),
       totalOutstanding: parseFloat((pendingInvoices + totalPartiallyPaid).toFixed(2)),
@@ -167,6 +196,7 @@ const getFinancialSummary = async (req, res, next) => {
         total: paidInvoices + partiallyPaidCount + pendingCount,
       },
       collectionRate: totalInvoiced > 0 ? parseFloat(((totalCollected / totalInvoiced) * 100).toFixed(2)) : 0,
+      month: month || null,
     });
   } catch (err) {
     next(err);
@@ -177,7 +207,7 @@ const zeroed = () => ({ total_invoiced: 0, total_collected: 0, total_pending: 0,
 const pnlZeroed = () => ({
   totalRevenue: 0,
   totalCollected: 0,
-  estimatedExpenses: 0,
+  totalExpenses: 0,
   grossProfit: 0,
   operatingIncome: 0,
   netProfit: 0,
@@ -188,12 +218,15 @@ const pnlZeroed = () => ({
 const financialSummaryZeroed = () => ({
   assets: 0,
   liabilities: 0,
+  businessValue: 0,
   equity: 0,
+  totalExpenses: 0,
   totalInvoiced: 0,
   totalCollected: 0,
   totalOutstanding: 0,
   invoices: { paid: 0, partiallypaid: 0, pending: 0, total: 0 },
   collectionRate: 0,
+  month: null,
 });
 
 module.exports = { getBalanceSheet, getProfitAndLoss, getFinancialSummary };

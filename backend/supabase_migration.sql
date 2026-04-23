@@ -296,5 +296,37 @@ CREATE TRIGGER trg_expenses_updated_at BEFORE UPDATE ON expenses FOR EACH ROW EX
 INSERT INTO super_admins (id, email, full_name)
 SELECT id, email, 'Alex Kimotho'
 FROM auth.users
-WHERE email = 'lexkimothowachira@gmail.com'
+WHERE email = 'lexkimothowachira@gmail.com';
+
+-- ============================================================
+-- Phase 2 Patches: Drivers, Logo Upload, Driver-Vehicle Assignment
+-- Run these in Supabase SQL Editor
+-- ============================================================
+
+-- Drivers table
+CREATE TABLE IF NOT EXISTS drivers (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id    UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+  full_name      TEXT NOT NULL,
+  phone          TEXT NOT NULL,
+  license_number TEXT,
+  status         TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','INACTIVE')),
+  notes          TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS drivers_operator_idx ON drivers(operator_id);
+
+ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "drivers_operator" ON drivers FOR ALL USING (operator_id = auth.uid());
+
+-- Assign driver to vehicle (nullable FK from vehicles → drivers)
+ALTER TABLE vehicles ADD COLUMN IF NOT EXISTS driver_id UUID REFERENCES drivers(id) ON DELETE SET NULL;
+
+-- Business logo on operator profile
+ALTER TABLE operators ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
+-- Supabase Storage bucket for logos (create manually in Supabase dashboard):
+-- Dashboard → Storage → New bucket → Name: "logos" → Public: true
 ON CONFLICT (id) DO NOTHING;

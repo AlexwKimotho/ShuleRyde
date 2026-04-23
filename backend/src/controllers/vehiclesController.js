@@ -5,7 +5,7 @@ const getVehicles = async (req, res, next) => {
   try {
     const { data: vehicles, error } = await supabase
       .from('vehicles')
-      .select('*, children(id, full_name, school_name, pickup_location, dropoff_location, parents(full_name, phone))')
+      .select('*, drivers(id, full_name, phone, license_number, status), children(id, full_name, school_name, pickup_location, dropoff_location, parents(full_name, phone))')
       .eq('operator_id', req.operator.id)
       .order('created_at', { ascending: false });
 
@@ -62,7 +62,7 @@ const updateVehicle = async (req, res, next) => {
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { id } = req.params;
-    const { license_plate, model, route, max_capacity, status } = req.body;
+    const { license_plate, model, route, max_capacity, status, driver_id } = req.body;
 
     // Verify ownership
     const { data: existing } = await supabase
@@ -80,12 +80,13 @@ const updateVehicle = async (req, res, next) => {
     if (route !== undefined) updates.route = route;
     if (max_capacity) updates.max_capacity = max_capacity;
     if (status) updates.status = status;
+    if (driver_id !== undefined) updates.driver_id = driver_id || null;
 
     const { data: vehicle, error } = await supabase
       .from('vehicles')
       .update(updates)
       .eq('id', id)
-      .select()
+      .select('*, drivers(id, full_name, phone, license_number, status)')
       .single();
 
     if (error) throw error;

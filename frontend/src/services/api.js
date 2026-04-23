@@ -34,6 +34,13 @@ export const vehiclesAPI = {
   delete: (id) => api.delete(`/vehicles/${id}`),
 };
 
+export const driversAPI = {
+  getAll: () => api.get('/drivers'),
+  create: (data) => api.post('/drivers', data),
+  update: (id, data) => api.put(`/drivers/${id}`, data),
+  delete: (id) => api.delete(`/drivers/${id}`),
+};
+
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
 };
@@ -67,6 +74,7 @@ export const complianceAPI = {
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
+  uploadLogo: (formData) => api.post('/settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 export const expensesAPI = {
@@ -80,7 +88,7 @@ export const expensesAPI = {
 export const financeAPI = {
   getBalanceSheet: () => api.get('/finance/balance-sheet'),
   getProfitAndLoss: (year) => api.get('/finance/profit-loss', { params: { year } }),
-  getFinancialSummary: () => api.get('/finance/summary'),
+  getFinancialSummary: (month) => api.get('/finance/summary', { params: month ? { month } : {} }),
 };
 
 const adminApi = axios.create({ baseURL: API_URL });

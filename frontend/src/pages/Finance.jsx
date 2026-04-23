@@ -504,11 +504,9 @@ const ProfitLossTab = () => {
         <div className="p-5">
           <table className="w-full">
             <tbody className="divide-y divide-cloud text-sm">
-              <tr><td className="py-3 font-medium text-ink">Revenue</td><td className="py-3 text-right text-green-600 font-semibold">{fmt(data?.totalRevenue || 0)}</td></tr>
-              <tr><td className="py-3 font-medium text-ink">Collection</td><td className="py-3 text-right text-green-600">{fmt(data?.totalCollected || 0)}</td></tr>
-              <tr className="bg-paper"><td className="py-3 font-semibold text-ink">Gross Expenses (est. 25%)</td><td className="py-3 text-right text-red-600 font-semibold">{fmt(data?.estimatedExpenses || 0)}</td></tr>
-              <tr className="bg-paper"><td className="py-3 font-semibold text-ink">Gross Profit</td><td className="py-3 text-right text-ink font-semibold">{fmt(data?.grossProfit || 0)}</td></tr>
-              <tr><td className="py-3 text-slate">Operating Expenses</td><td className="py-3 text-right text-slate">—</td></tr>
+              <tr><td className="py-3 font-medium text-ink">Total Revenue (Invoiced)</td><td className="py-3 text-right text-green-600 font-semibold">{fmt(data?.totalRevenue || 0)}</td></tr>
+              <tr><td className="py-3 font-medium text-ink">Amount Collected</td><td className="py-3 text-right text-green-600">{fmt(data?.totalCollected || 0)}</td></tr>
+              <tr className="bg-paper"><td className="py-3 font-semibold text-ink">Total Expenses</td><td className="py-3 text-right text-red-600 font-semibold">{fmt(data?.totalExpenses || 0)}</td></tr>
               <tr className="bg-green-50 border-t-2 border-green-200"><td className="py-3 font-bold text-green-900">Net Profit</td><td className="py-3 text-right font-bold text-green-700 text-lg">{fmt(data?.netProfit || 0)}</td></tr>
             </tbody>
           </table>
@@ -527,19 +525,18 @@ const ProfitLossTab = () => {
                 <th className="px-4 py-3 text-left font-medium text-slate">Month</th>
                 <th className="px-4 py-3 text-right font-medium text-slate">Revenue</th>
                 <th className="px-4 py-3 text-right font-medium text-slate">Collected</th>
-                <th className="px-4 py-3 text-right font-medium text-slate">Expenses (25%)</th>
+                <th className="px-4 py-3 text-right font-medium text-slate">Expenses</th>
                 <th className="px-4 py-3 text-right font-medium text-slate">Net Profit</th>
               </tr></thead>
               <tbody className="divide-y divide-cloud">
                 {data.monthly.map((m) => {
-                  const expenses = m.revenue * 0.25;
-                  const profit = m.revenue - expenses;
+                  const profit = m.collected - (m.expenses || 0);
                   return (
                     <tr key={m.month} className="hover:bg-paper transition-colors">
                       <td className="px-4 py-3 font-medium text-ink">{monthLabel(m.month)}</td>
                       <td className="px-4 py-3 text-right text-green-600">{fmt(m.revenue)}</td>
                       <td className="px-4 py-3 text-right text-green-700">{fmt(m.collected)}</td>
-                      <td className="px-4 py-3 text-right text-red-600">{fmt(expenses)}</td>
+                      <td className="px-4 py-3 text-right text-red-600">{fmt(m.expenses || 0)}</td>
                       <td className="px-4 py-3 text-right font-semibold text-ink">{fmt(profit)}</td>
                     </tr>
                   );
@@ -557,18 +554,33 @@ const ProfitLossTab = () => {
 const BalanceSheetTab = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [filterMonth, setFilterMonth] = useState('');
 
   useEffect(() => {
-    financeAPI.getFinancialSummary()
+    setLoading(true);
+    financeAPI.getFinancialSummary(filterMonth || undefined)
       .then(({ data: d }) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [filterMonth]);
 
   if (loading) return <div className="flex justify-center py-20"><svg className="animate-spin h-8 w-8 text-sage-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
 
   return (
     <>
+      <div className="flex justify-end mb-5">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate">Filter by month:</span>
+          <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          {filterMonth && (
+            <button onClick={() => setFilterMonth('')}
+              className="text-xs text-slate hover:text-error px-2 py-1.5 rounded-lg border border-cloud hover:border-red-200 transition-colors">
+              All time
+            </button>
+          )}
+        </div>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-paper border-b border-cloud"><h2 className="font-semibold text-ink">Assets</h2></div>
@@ -580,9 +592,10 @@ const BalanceSheetTab = () => {
         <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-paper border-b border-cloud"><h2 className="font-semibold text-ink">Liabilities & Equity</h2></div>
           <div className="p-5">
-            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Accounts Payable</p><p className="font-semibold text-red-600">{fmt(data?.liabilities || 0)}</p></div>
-            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Owner's Equity</p><p className="font-semibold text-ink">{fmt(data?.equity || 0)}</p></div>
-            <div className="flex items-center justify-between py-4 bg-blue-50 rounded px-3 mt-3"><p className="font-bold text-blue-900">Total L & E</p><p className="font-bold text-blue-700 text-lg">{fmt((data?.liabilities || 0) + (data?.equity || 0))}</p></div>
+            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Accounts Payable (Outstanding)</p><p className="font-semibold text-red-600">{fmt(data?.liabilities || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Total Expenses</p><p className="font-semibold text-red-600">{fmt(data?.totalExpenses || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate font-medium">Business Value</p><p className="font-semibold text-ink">{fmt(data?.businessValue || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 bg-blue-50 rounded px-3 mt-3"><p className="font-bold text-blue-900">Total L & E</p><p className="font-bold text-blue-700 text-lg">{fmt((data?.liabilities || 0) + (data?.businessValue || 0))}</p></div>
           </div>
         </div>
       </div>
@@ -615,19 +628,27 @@ const ExpensesTab = () => {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [filterCategory, setFilterCategory] = useState('ALL');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
   const [deleting, setDeleting] = useState(null);
   const [toast, setToast] = useState('');
 
   const load = async () => {
     try {
-      const [{ data: ed }, { data: vd }] = await Promise.all([expensesAPI.getAll(), vehiclesAPI.getAll()]);
+      const params = {};
+      if (filterFrom) params.from = filterFrom;
+      if (filterTo) params.to = filterTo;
+      const [{ data: ed }, { data: vd }] = await Promise.all([
+        expensesAPI.getAll(params),
+        vehiclesAPI.getAll(),
+      ]);
       setExpenses(ed.expenses);
       setVehicles(vd.vehicles);
     } catch {}
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [filterFrom, filterTo]);
 
   const filtered = expenses.filter((e) => filterCategory === 'ALL' || e.category === filterCategory);
   const total = filtered.reduce((s, e) => s + parseFloat(e.amount), 0);
@@ -723,8 +744,21 @@ const ExpensesTab = () => {
         />
       )}
 
-      <div className="flex items-center justify-between mb-5">
-        <p className="text-slate text-sm">Track fuel, service, fines, and salaries</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate font-medium uppercase tracking-wide">Date:</span>
+          <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          <span className="text-slate text-sm">to</span>
+          <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          {(filterFrom || filterTo) && (
+            <button onClick={() => { setFilterFrom(''); setFilterTo(''); }}
+              className="text-xs text-slate hover:text-error px-2 py-1.5 rounded-lg border border-cloud hover:border-red-200 transition-colors">
+              Clear
+            </button>
+          )}
+        </div>
         <Button size="sm" onClick={() => setModal('new')}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -849,6 +883,8 @@ const Finance = () => {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterName, setFilterName] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
   const [viewModal, setViewModal] = useState(null);
   const [receiptModal, setReceiptModal] = useState(null);
   const [txnReceiptModal, setTxnReceiptModal] = useState(null);
@@ -913,12 +949,21 @@ const Finance = () => {
     if (filterStatus !== 'ALL' && p.status !== filterStatus) return false;
     if (filterMonth && p.invoice_month !== filterMonth) return false;
     if (filterName && !p.parents?.full_name?.toLowerCase().includes(filterName.toLowerCase())) return false;
+    if (filterFromDate) {
+      const d = new Date(p.created_at);
+      if (d < new Date(filterFromDate)) return false;
+    }
+    if (filterToDate) {
+      const d = new Date(p.created_at);
+      if (d > new Date(filterToDate + 'T23:59:59')) return false;
+    }
     return true;
   });
 
-  const totalPending = payments.filter((p) => p.status === 'PENDING').reduce((s, p) => s + parseFloat(p.amount), 0);
-  const totalPartiallyPaid = payments.filter((p) => p.status === 'PARTIALLY_PAID').reduce((s, p) => s + parseFloat(p.amount_collected || 0), 0);
-  const totalCollected = payments.filter((p) => p.status === 'PAID').reduce((s, p) => s + parseFloat(p.amount), 0);
+  const totalRevenue = filtered.reduce((s, p) => s + parseFloat(p.amount), 0);
+  const totalPending = filtered.filter((p) => p.status === 'PENDING').reduce((s, p) => s + parseFloat(p.amount), 0);
+  const totalPartiallyPaid = filtered.filter((p) => p.status === 'PARTIALLY_PAID').reduce((s, p) => s + parseFloat(p.amount_collected || 0), 0);
+  const totalCollected = filtered.filter((p) => p.status === 'PAID').reduce((s, p) => s + parseFloat(p.amount), 0);
 
   const PaymentModal = ({ onClose, onSaved }) => {
     const [loadingModal, setLoadingModal] = useState(false);
@@ -1191,7 +1236,27 @@ const Finance = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5 sm:mb-6">
+        {/* Date range filter for metric cards */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs text-slate font-medium uppercase tracking-wide">Date range:</span>
+          <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          <span className="text-slate text-sm">to</span>
+          <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)}
+            className="px-3 py-1.5 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" />
+          {(filterFromDate || filterToDate) && (
+            <button onClick={() => { setFilterFromDate(''); setFilterToDate(''); }}
+              className="text-xs text-slate hover:text-error px-2 py-1.5 rounded-lg border border-cloud hover:border-red-200 transition-colors">
+              Clear
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+          <div className="bg-white rounded-xl border border-cloud p-4 sm:p-5">
+            <p className="text-xs text-slate uppercase tracking-wide mb-1">Total Revenue</p>
+            <p className="text-lg sm:text-2xl font-semibold text-ink">KES {totalRevenue.toLocaleString()}</p>
+          </div>
           <div className="bg-white rounded-xl border border-cloud p-4 sm:p-5">
             <p className="text-xs text-slate uppercase tracking-wide mb-1">Collected</p>
             <p className="text-lg sm:text-2xl font-semibold text-green-600">KES {totalCollected.toLocaleString()}</p>

@@ -18,6 +18,11 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+
+  const PAGE_SIZE = 5;
+  const totalPages = Math.ceil(activity.length / PAGE_SIZE);
+  const pageActivity = activity.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
     dashboardAPI.getStats()
@@ -100,7 +105,7 @@ const Dashboard = () => {
                 <p className="text-slate/60 text-xs mt-1">Actions like student check-ins and payments will appear here.</p>
               </div>
             ) : (
-              activity.map((log) => (
+              pageActivity.map((log) => (
                 <div key={log.id} className="px-4 sm:px-5 py-3 flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-sage-500 mt-2 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -117,10 +122,38 @@ const Dashboard = () => {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="px-4 sm:px-5 py-3 border-t border-cloud flex items-center justify-between">
+              <span className="text-xs text-slate">
+                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, activity.length)} of {activity.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded-lg text-slate hover:text-ink hover:bg-cloud disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-xs font-medium text-ink px-2">{page} / {totalPages}</span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded-lg text-slate hover:text-ink hover:bg-cloud disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl border border-cloud shadow-sm">
+        <div className="bg-white rounded-xl border border-cloud shadow-sm self-start">
           <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-cloud">
             <h2 className="font-semibold text-ink text-sm sm:text-base">Quick Actions</h2>
           </div>

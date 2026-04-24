@@ -58,10 +58,20 @@ const DashboardLayout = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-sage-100 flex items-center justify-center">
-              <span className="text-sage-700 font-semibold text-sm">
-                {operator?.full_name?.[0] || 'O'}
-              </span>
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden border border-cloud flex-shrink-0">
+              {operator?.profile_picture_url ? (
+                <img
+                  src={operator.profile_picture_url}
+                  alt={operator.full_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-sage-100 flex items-center justify-center">
+                  <span className="text-sage-700 font-semibold text-sm">
+                    {operator?.full_name?.[0] || 'O'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </header>

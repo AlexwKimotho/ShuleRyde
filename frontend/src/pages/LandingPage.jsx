@@ -40,6 +40,7 @@ const IconGrid = () => (
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [sent, setSent] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const lpRef = useRef(null);
 
   /* sticky nav */
@@ -70,18 +71,20 @@ export default function LandingPage() {
     <div className="lp" ref={lpRef}>
 
       {/* ══ NAV ══ */}
-      <nav className={`lp-nav${scrolled ? ' scrolled' : ''}`}>
+      <nav className={`lp-nav${scrolled ? ' scrolled' : ''}${menuOpen ? ' open' : ''}`}>
         <a href="#" className="lp-logo" onClick={scrollTo('top')}>
           <div className="lp-logo-mark"><IconGrid /></div>
           <span className="lp-logo-text">Shule<span>Ryde</span></span>
         </a>
-        <ul className="lp-nav-links">
-          <li><a href="#parents"     onClick={scrollTo('parents')}>For Parents</a></li>
-          <li><a href="#operators"   onClick={scrollTo('operators')}>For Operators</a></li>
-          <li><a href="#safety"      onClick={scrollTo('safety')}>Safety</a></li>
-          <li><a href="#how-it-works" onClick={scrollTo('how-it-works')}>How It Works</a></li>
-          <li><a href="#contact" className="lp-nav-cta" onClick={scrollTo('contact')}>Enroll Today</a></li>
-          <li><Link to="/signin" className="lp-nav-signin">Sign In</Link></li>
+        <button className="lp-hamburger" onClick={() => setMenuOpen(m => !m)} aria-label="Toggle navigation">
+          <span /><span /><span />
+        </button>
+        <ul className={`lp-nav-links${menuOpen ? ' open' : ''}`}>
+          <li><a href="#parents"      onClick={(e) => { scrollTo('parents')(e);      setMenuOpen(false); }}>For Parents</a></li>
+          <li><a href="#operators"    onClick={(e) => { scrollTo('operators')(e);    setMenuOpen(false); }}>For Operators</a></li>
+          <li><a href="#safety"       onClick={(e) => { scrollTo('safety')(e);       setMenuOpen(false); }}>Safety</a></li>
+          <li><a href="#how-it-works" onClick={(e) => { scrollTo('how-it-works')(e); setMenuOpen(false); }}>How It Works</a></li>
+          <li><a href="#contact" className="lp-nav-cta" onClick={(e) => { scrollTo('contact')(e); setMenuOpen(false); }}>Enroll Today</a></li>
         </ul>
       </nav>
 

@@ -1,10 +1,13 @@
 const supabase = require('../config/database');
 
+const FIELDS = 'id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at, profile_picture_url';
+const BUCKET = 'profile-pictures';
+
 const getSettings = async (req, res, next) => {
   try {
     const { data: operator, error } = await supabase
       .from('operators')
-      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
+      .select(FIELDS)
       .eq('id', req.operator.id)
       .maybeSingle();
 
@@ -30,7 +33,7 @@ const updateSettings = async (req, res, next) => {
       .from('operators')
       .update(updates)
       .eq('id', req.operator.id)
-      .select('id, email, full_name, business_name, phone, mpesa_paybill, subscription_status, created_at')
+      .select(FIELDS)
       .single();
 
     if (error) throw error;
@@ -40,4 +43,36 @@ const updateSettings = async (req, res, next) => {
   }
 };
 
-module.exports = { getSettings, updateSettings };
+const uploadProfilePicture = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    // Ensure the bucket exists (no-op if already created)
+    await supabase.storage.createBucket(BUCKET, { public: true }).catch(() => {});
+
+    const ext = (req.file.originalname.split('.').pop() || 'jpg').toLowerCase();
+    const fileName = `${req.operator.id}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(fileName, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(fileName);
+
+    const { data: operator, error } = await supabase
+      .from('operators')
+      .update({ profile_picture_url: publicUrl })
+      .eq('id', req.operator.id)
+      .select(FIELDS)
+      .single();
+
+    if (error) throw error;
+    res.json({ operator });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getSettings, updateSettings, uploadProfilePicture };

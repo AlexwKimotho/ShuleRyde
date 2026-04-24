@@ -298,3 +298,6 @@ SELECT id, email, 'Alex Kimotho'
 FROM auth.users
 WHERE email = 'lexkimothowachira@gmail.com'
 ON CONFLICT (id) DO NOTHING;
+
+-- Profile picture support
+ALTER TABLE operators ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;

@@ -67,6 +67,9 @@ export const complianceAPI = {
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
+  uploadProfilePicture: (formData) => api.post('/settings/profile-picture', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 export const expensesAPI = {

@@ -5,12 +5,14 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 const Settings = () => {
-  const { operator: authOperator } = useAuth();
+  const { operator: authOperator, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ full_name: '', business_name: '', phone: '', mpesa_paybill: '' });
+  const [form, setForm] = useState({ full_name: '', business_name: '', phone: '', mpesa_paybill: '', profile_picture_url: '' });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
 
   const [logoPreview, setLogoPreview] = useState('');
   const [logoFile, setLogoFile] = useState(null);
@@ -21,10 +23,30 @@ const Settings = () => {
   useEffect(() => {
     settingsAPI.get().then(({ data }) => {
       const op = data.operator;
-      setForm({ full_name: op.full_name, business_name: op.business_name, phone: op.phone, mpesa_paybill: op.mpesa_paybill || '' });
+      setForm({ full_name: op.full_name, business_name: op.business_name, phone: op.phone, mpesa_paybill: op.mpesa_paybill || '', profile_picture_url: op.profile_picture_url || '' });
       if (op.logo_url) setLogoPreview(op.logo_url);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setPhotoError('File must be under 5 MB'); return; }
+    setPhotoError('');
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const { data } = await settingsAPI.uploadProfilePicture(fd);
+      setForm(p => ({ ...p, profile_picture_url: data.operator.profile_picture_url }));
+      await refreshUser();
+    } catch {
+      setPhotoError('Upload failed. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = '';
+    }
+  };
 
   const handleChange = (e) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
@@ -175,6 +197,46 @@ const Settings = () => {
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
+
+          {/* Profile Picture */}
+          <div className="flex items-center gap-4 pb-4 sm:pb-5 border-b border-cloud">
+            <div className="relative flex-shrink-0">
+              {form.profile_picture_url ? (
+                <img
+                  src={form.profile_picture_url}
+                  alt="Profile"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-cloud"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-sage-100 flex items-center justify-center border-2 border-cloud">
+                  <span className="text-sage-700 font-semibold text-2xl">
+                    {form.full_name?.[0] || authOperator?.email?.[0]?.toUpperCase() || 'O'}
+                  </span>
+                </div>
+              )}
+              {uploadingPhoto && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink mb-1">Profile Photo</p>
+              <label className="cursor-pointer inline-flex items-center gap-1.5 text-sm text-sage-600 hover:text-sage-700 font-medium transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {uploadingPhoto ? 'Uploading…' : 'Upload Photo'}
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+              </label>
+              {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
+              <p className="text-xs text-slate mt-0.5">JPG, PNG or WebP · max 5 MB</p>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-ink">Email</label>
             <p className="px-3 py-2 rounded-lg border border-border bg-paper text-slate text-sm">{authOperator?.email}</p>

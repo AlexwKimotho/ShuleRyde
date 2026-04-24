@@ -330,3 +330,6 @@ ALTER TABLE operators ADD COLUMN IF NOT EXISTS logo_url TEXT;
 -- Supabase Storage bucket for logos (create manually in Supabase dashboard):
 -- Dashboard → Storage → New bucket → Name: "logos" → Public: true
 ON CONFLICT (id) DO NOTHING;
+
+-- Profile picture support
+ALTER TABLE operators ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;

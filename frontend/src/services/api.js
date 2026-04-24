@@ -75,6 +75,7 @@ export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
   uploadLogo: (formData) => api.post('/settings/logo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  uploadProfilePicture: (formData) => api.post('/settings/profile-picture', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 export const expensesAPI = {

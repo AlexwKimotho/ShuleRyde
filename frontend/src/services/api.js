@@ -80,6 +80,14 @@ export const expensesAPI = {
   delete: (id) => api.delete(`/expenses/${id}`),
 };
 
+export const schoolsAPI = {
+  getAll: () => api.get('/schools'),
+  create: (data) => api.post('/schools', data),
+  update: (id, data) => api.put(`/schools/${id}`, data),
+  delete: (id) => api.delete(`/schools/${id}`),
+  getAnalytics: () => api.get('/schools/analytics'),
+};
+
 export const financeAPI = {
   getBalanceSheet: () => api.get('/finance/balance-sheet'),
   getProfitAndLoss: (year) => api.get('/finance/profit-loss', { params: { year } }),

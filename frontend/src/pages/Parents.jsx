@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { parentsAPI, vehiclesAPI } from '../services/api';
+import { parentsAPI, vehiclesAPI, schoolsAPI } from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
 // ── Student Modal ──────────────────────────────────────────
-const StudentModal = ({ parentId, student, vehicles, onClose, onSaved }) => {
+const StudentModal = ({ parentId, student, vehicles, schools, onClose, onSaved }) => {
   const isEdit = Boolean(student?.id);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     full_name: student?.full_name || '',
-    school_name: student?.school_name || '',
+    school_id: student?.school_id || '',
     admission_number: student?.admission_number || '',
     pickup_location: student?.pickup_location || '',
     dropoff_location: student?.dropoff_location || '',
@@ -24,8 +24,10 @@ const StudentModal = ({ parentId, student, vehicles, onClose, onSaved }) => {
     if (!form.full_name.trim()) { setError('Student name is required'); return; }
     setLoading(true); setError('');
     try {
-      if (isEdit) await parentsAPI.updateStudent(student.id, form);
-      else await parentsAPI.createStudent(parentId, form);
+      const selectedSchool = schools.find(s => s.id === form.school_id);
+      const payload = { ...form, school_name: selectedSchool?.name || '' };
+      if (isEdit) await parentsAPI.updateStudent(student.id, payload);
+      else await parentsAPI.createStudent(parentId, payload);
       onSaved();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save student');
@@ -40,7 +42,19 @@ const StudentModal = ({ parentId, student, vehicles, onClose, onSaved }) => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input id="full_name" name="full_name" label="Student Name" value={form.full_name} onChange={handleChange} />
           <Input id="admission_number" name="admission_number" label="Admission Number (optional)" placeholder="e.g. ADM-2024-001" value={form.admission_number} onChange={handleChange} />
-          <Input id="school_name" name="school_name" label="School" value={form.school_name} onChange={handleChange} />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-ink">School</label>
+            <select name="school_id" value={form.school_id} onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+              <option value="">— Select school —</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}{s.location ? ` · ${s.location}` : ''}</option>
+              ))}
+            </select>
+            {!schools.length && (
+              <p className="text-xs text-amber-600 mt-1">No schools added yet. <a href="/dashboard/schools" className="underline">Add schools</a> first.</p>
+            )}
+          </div>
           <Input id="pickup_location" name="pickup_location" label="Pickup Location" value={form.pickup_location} onChange={handleChange} />
           <Input id="dropoff_location" name="dropoff_location" label="Drop-off Location" value={form.dropoff_location} onChange={handleChange} />
           <div className="flex flex-col gap-1">
@@ -146,7 +160,7 @@ const ParentViewModal = ({ parent, onClose }) => (
                   <p className="text-sm font-medium text-ink">{s.full_name}</p>
                   <p className="text-xs text-slate mt-0.5">
                     {s.admission_number && <span className="mr-2 text-ink/60">#{s.admission_number}</span>}
-                    {s.school_name || 'No school set'}
+                    {s.schools?.name || s.school_name || 'No school set'}
                     {s.vehicles && <span className="text-sage-600"> · {s.vehicles.license_plate}{s.vehicles.route ? ` (${s.vehicles.route})` : ''}</span>}
                     {!s.vehicles && <span className="text-amber-600"> · No route</span>}
                   </p>
@@ -164,7 +178,7 @@ const ParentViewModal = ({ parent, onClose }) => (
 );
 
 // ── Parent Row (desktop table) ─────────────────────────────
-const ParentRow = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) => {
+const ParentRow = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRefresh }) => {
   const [expanded, setExpanded] = useState(false);
   const [studentModal, setStudentModal] = useState(null);
 
@@ -222,6 +236,7 @@ const ParentRow = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) =>
                 parentId={parent.id}
                 student={studentModal === 'new' ? null : studentModal}
                 vehicles={vehicles}
+                schools={schools}
                 onClose={() => setStudentModal(null)}
                 onSaved={() => { setStudentModal(null); onRefresh(); }}
               />
@@ -244,7 +259,7 @@ const ParentRow = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) =>
                     <div>
                       <p className="text-sm font-medium text-ink">{s.full_name}</p>
                       <p className="text-xs text-slate mt-0.5">
-                        {s.school_name || 'No school set'}
+                        {s.schools?.name || s.school_name || 'No school set'}
                         {s.vehicles && <span className="ml-2 text-sage-600">· {s.vehicles.license_plate}{s.vehicles.route ? ` (${s.vehicles.route})` : ''}</span>}
                         {!s.vehicles && <span className="ml-2 text-amber-600">· No route assigned</span>}
                       </p>
@@ -273,7 +288,7 @@ const ParentRow = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) =>
 };
 
 // ── Mobile Parent Card ─────────────────────────────────────
-const ParentCard = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) => {
+const ParentCard = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRefresh }) => {
   const [expanded, setExpanded] = useState(false);
   const [studentModal, setStudentModal] = useState(null);
 
@@ -290,6 +305,7 @@ const ParentCard = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) =
           parentId={parent.id}
           student={studentModal === 'new' ? null : studentModal}
           vehicles={vehicles}
+          schools={schools}
           onClose={() => setStudentModal(null)}
           onSaved={() => { setStudentModal(null); onRefresh(); }}
         />
@@ -356,7 +372,7 @@ const ParentCard = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) =
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-ink">{s.full_name}</p>
                     <p className="text-xs text-slate mt-0.5 truncate">
-                      {s.school_name || 'No school'}
+                      {s.schools?.name || s.school_name || 'No school'}
                       {s.vehicles && <span className="text-sage-600"> · {s.vehicles.license_plate}</span>}
                       {!s.vehicles && <span className="text-amber-600"> · No route</span>}
                     </p>
@@ -387,15 +403,17 @@ const ParentCard = ({ parent, vehicles, onEdit, onDelete, onView, onRefresh }) =
 const Parents = () => {
   const [parents, setParents] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [viewModal, setViewModal] = useState(null);
 
   const load = async () => {
     try {
-      const [{ data: pd }, { data: vd }] = await Promise.all([parentsAPI.getAll(), vehiclesAPI.getAll()]);
+      const [{ data: pd }, { data: vd }, { data: sd }] = await Promise.all([parentsAPI.getAll(), vehiclesAPI.getAll(), schoolsAPI.getAll()]);
       setParents(pd.parents);
       setVehicles(vd.vehicles);
+      setSchools(sd.schools);
     } catch {}
     finally { setLoading(false); }
   };
@@ -459,6 +477,7 @@ const Parents = () => {
                 key={p.id}
                 parent={p}
                 vehicles={vehicles}
+                schools={schools}
                 onEdit={(parent) => setModal(parent)}
                 onDelete={handleDelete}
                 onView={(parent) => setViewModal(parent)}
@@ -485,6 +504,7 @@ const Parents = () => {
                     key={p.id}
                     parent={p}
                     vehicles={vehicles}
+                    schools={schools}
                     onEdit={(parent) => setModal(parent)}
                     onDelete={handleDelete}
                     onView={(parent) => setViewModal(parent)}

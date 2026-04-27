@@ -333,3 +333,25 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Profile picture support
 ALTER TABLE operators ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;
+
+-- ============================================================
+-- SCHOOLS ENTITY
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS schools (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  location    TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS schools_operator_idx ON schools(operator_id);
+ALTER TABLE schools ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "schools_operator" ON schools FOR ALL USING (operator_id = auth.uid());
+CREATE TRIGGER trg_schools_updated_at BEFORE UPDATE ON schools FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Link children to schools (FK, keeps school_name for backward compat)
+ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id UUID REFERENCES schools(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS children_school_idx ON children(school_id);

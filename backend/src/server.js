@@ -26,6 +26,7 @@ app.use('/api/compliance', require('./routes/compliance'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/finance', require('./routes/finance'));
 app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/schools', require('./routes/schools'));
 
 // Health check
 app.get('/health', (req, res) => {

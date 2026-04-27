@@ -5,7 +5,7 @@ const getParents = async (req, res, next) => {
   try {
     const { data: parents, error } = await supabase
       .from('parents')
-      .select('*, children(id, full_name, school_name, pickup_location, dropoff_location, vehicle_id, admission_number, vehicles(id, license_plate, model, route))')
+      .select('*, children(id, full_name, school_name, school_id, pickup_location, dropoff_location, vehicle_id, admission_number, schools(id, name), vehicles(id, license_plate, model, route))')
       .eq('operator_id', req.operator.id)
       .order('created_at', { ascending: false });
 
@@ -92,7 +92,7 @@ const createStudent = async (req, res, next) => {
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { parent_id } = req.params;
-    const { full_name, school_name, pickup_location, dropoff_location, vehicle_id, admission_number } = req.body;
+    const { full_name, school_name, school_id, pickup_location, dropoff_location, vehicle_id, admission_number } = req.body;
 
     const { data: parent } = await supabase
       .from('parents').select('id').eq('id', parent_id).eq('operator_id', req.operator.id).single();
@@ -100,8 +100,8 @@ const createStudent = async (req, res, next) => {
 
     const { data: student, error } = await supabase
       .from('children')
-      .insert({ parent_id, full_name, school_name, pickup_location, dropoff_location, vehicle_id: vehicle_id || null, admission_number: admission_number || null })
-      .select('*, vehicles(id, license_plate, model, route)')
+      .insert({ parent_id, full_name, school_name: school_name || null, school_id: school_id || null, pickup_location, dropoff_location, vehicle_id: vehicle_id || null, admission_number: admission_number || null })
+      .select('*, schools(id, name), vehicles(id, license_plate, model, route)')
       .single();
 
     if (error) throw error;
@@ -114,13 +114,13 @@ const createStudent = async (req, res, next) => {
 const updateStudent = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { full_name, school_name, pickup_location, dropoff_location, vehicle_id, admission_number } = req.body;
+    const { full_name, school_name, school_id, pickup_location, dropoff_location, vehicle_id, admission_number } = req.body;
 
     const { data: student, error } = await supabase
       .from('children')
-      .update({ full_name, school_name, pickup_location, dropoff_location, vehicle_id: vehicle_id || null, admission_number: admission_number || null })
+      .update({ full_name, school_name: school_name || null, school_id: school_id || null, pickup_location, dropoff_location, vehicle_id: vehicle_id || null, admission_number: admission_number || null })
       .eq('id', id)
-      .select('*, vehicles(id, license_plate, model, route)')
+      .select('*, schools(id, name), vehicles(id, license_plate, model, route)')
       .single();
 
     if (error) throw error;

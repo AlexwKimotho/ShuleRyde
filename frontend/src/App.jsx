@@ -12,6 +12,8 @@ import Finance from './pages/Finance';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import LandingPage from './pages/LandingPage';
+import Payments from './pages/Payments';
+import Schools from './pages/Schools';
 import AdminSignIn from './pages/AdminSignIn';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOperatorDetail from './pages/AdminOperatorDetail';
@@ -56,6 +58,8 @@ const AppRoutes = () => {
         <Route index element={<Dashboard />} />
         <Route path="vehicles" element={<Vehicles />} />
         <Route path="parents" element={<Parents />} />
+        <Route path="schools" element={<Schools />} />
+        <Route path="payments" element={<Payments />} />
         <Route path="compliance" element={<Compliance />} />
         <Route path="finance" element={<Finance />} />
         <Route path="settings" element={<Settings />} />

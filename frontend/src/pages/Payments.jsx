@@ -36,6 +36,7 @@ const WaIcon = () => (
 
 const groupCollected = (g) => g.payments.reduce((s, p) => s + parseFloat(p.amount_collected || 0), 0);
 const groupOutstanding = (g) => g.payments.reduce((s, p) => s + Math.max(0, parseFloat(p.amount) - parseFloat(p.amount_collected || 0)), 0);
+const firstName = (name) => name?.split(' ')[0] || name || '';
 
 const latestInstallment = (p) => {
   const txns = p.payment_transactions || [];
@@ -90,7 +91,24 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
   const ref = useRef();
   const print = usePrint(ref);
   const outstanding = Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0));
-  const waMsg = `Hello ${payment.parents?.full_name},\n\nInstallment payment received! Thank you.\n\nMonth: ${monthLabel(payment.invoice_month)}\nAmount Paid: ${fmt(transaction.amount)}\nReceipt #${shortId(transaction.id)}\nDate: ${new Date(transaction.paid_at).toLocaleDateString('en-KE')}\nBalance Remaining: ${fmt(outstanding)}\n\n${operator?.business_name || 'ShuleRyde'}`;
+  const waMsg = [
+    `Hello ${firstName(payment.parents?.full_name)},`,
+    '',
+    `Payment received! Thank you.`,
+    payment.children?.full_name ? `Student: ${payment.children.full_name}` : null,
+    '',
+    `Month: ${monthLabel(payment.invoice_month)}`,
+    `Amount Paid: ${fmt(transaction.amount)}`,
+    `Receipt #${shortId(transaction.id)}`,
+    `Date: ${new Date(transaction.paid_at).toLocaleDateString('en-KE')}`,
+    outstanding > 0 ? `Balance Remaining: ${fmt(outstanding)}` : null,
+    '',
+    'Thank you,',
+    operator?.full_name || null,
+    operator?.business_name || 'ShuleRyde',
+  ].filter((l) => l !== null).join('\n');
+
+  const handleWaShare = () => { print(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -98,10 +116,10 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-ink text-sm sm:text-base">Installment Receipt</h2>
           <div className="flex gap-2 flex-wrap justify-end">
-            <a href={waLink(payment.parents?.phone, waMsg)} target="_blank" rel="noopener noreferrer"
+            <button onClick={handleWaShare}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-              <WaIcon /><span className="hidden sm:inline">WhatsApp</span>
-            </a>
+              <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
+            </button>
             <Button onClick={print} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -176,7 +194,22 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
   const print = usePrint(ref);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
-  const waMsg = `Hello ${payment.parents?.full_name},\n\nYour school transport invoice for ${monthLabel(payment.invoice_month)} is ready.${payment.children?.full_name ? `\nStudent: ${payment.children.full_name}` : ''}\n\nAmount Due: ${fmt(payment.amount)}\nInvoice #${shortId(payment.id)}\nDue: ${dueDate.toLocaleDateString('en-KE')}${operator?.mpesa_paybill ? `\n\nPay via M-Pesa:\nPaybill: ${operator.mpesa_paybill}\nAccount: ${shortId(payment.id)}` : ''}\n\nThank you,\n${operator?.business_name || 'ShuleRyde'}`;
+  const waMsg = [
+    `Hello ${firstName(payment.parents?.full_name)},`,
+    '',
+    `Your school transport invoice for ${monthLabel(payment.invoice_month)} is ready.`,
+    payment.children?.full_name ? `Student: ${payment.children.full_name}` : null,
+    '',
+    `Amount Due: ${fmt(payment.amount)}`,
+    `Invoice #${shortId(payment.id)}`,
+    `Due: ${dueDate.toLocaleDateString('en-KE')}`,
+    '',
+    'Thank you,',
+    operator?.full_name || null,
+    operator?.business_name || 'ShuleRyde',
+  ].filter((l) => l !== null).join('\n');
+
+  const handleWaShare = () => { print(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -184,10 +217,10 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-ink text-sm sm:text-base">Invoice Preview</h2>
           <div className="flex gap-2 flex-wrap justify-end">
-            <a href={waLink(payment.parents?.phone, waMsg)} target="_blank" rel="noopener noreferrer"
+            <button onClick={handleWaShare}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-              <WaIcon /><span className="hidden sm:inline">WhatsApp</span>
-            </a>
+              <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
+            </button>
             <Button onClick={print} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -279,7 +312,26 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
   const print = usePrint(ref);
   const installment = latestInstallment(payment);
   const displayAmount = installment ? parseFloat(installment.amount) : parseFloat(payment.amount_collected || payment.amount);
-  const waMsg = `Hello ${payment.parents?.full_name},\n\nPayment confirmed! Thank you.${payment.children?.full_name ? `\nStudent: ${payment.children.full_name}` : ''}\n\nMonth: ${monthLabel(payment.invoice_month)}\nAmount Paid: ${fmt(displayAmount)}\nReceipt #${shortId(payment.id)}\n\nThank you for trusting ShuleRyde with your child's transport.\n${operator?.business_name || 'ShuleRyde'}`;
+  const datePaid = installment?.paid_at
+    ? new Date(installment.paid_at).toLocaleDateString('en-KE')
+    : payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-KE') : '';
+  const waMsg = [
+    `Hello ${firstName(payment.parents?.full_name)},`,
+    '',
+    `Payment received! Thank you.`,
+    payment.children?.full_name ? `Student: ${payment.children.full_name}` : null,
+    '',
+    `Month: ${monthLabel(payment.invoice_month)}`,
+    `Amount Paid: ${fmt(displayAmount)}`,
+    `Receipt #${shortId(payment.id)}`,
+    datePaid ? `Date: ${datePaid}` : null,
+    '',
+    'Thank you,',
+    operator?.full_name || null,
+    operator?.business_name || 'ShuleRyde',
+  ].filter((l) => l !== null).join('\n');
+
+  const handleWaShare = () => { print(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -287,10 +339,10 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-ink text-sm sm:text-base">Receipt Preview</h2>
           <div className="flex gap-2 flex-wrap justify-end">
-            <a href={waLink(payment.parents?.phone, waMsg)} target="_blank" rel="noopener noreferrer"
+            <button onClick={handleWaShare}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-              <WaIcon /><span className="hidden sm:inline">WhatsApp</span>
-            </a>
+              <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
+            </button>
             <Button onClick={print} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />

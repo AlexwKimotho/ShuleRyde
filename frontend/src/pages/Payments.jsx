@@ -1,5 +1,6 @@
+import html2pdf from 'html2pdf.js';
 import { useEffect, useMemo, useState } from 'react';
-import { paymentsAPI, parentsAPI, schoolsAPI } from '../services/api';
+import { paymentsAPI, parentsAPI, schoolsAPI, whatsappAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -105,6 +106,21 @@ const printDoc = (bodyHtml, title = 'ShuleRyde Document') => {
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 500);
+};
+
+const generatePdfBlob = (bodyHtml) => {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = `position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;padding:48px 40px;box-sizing:border-box;${FONT}`;
+  wrapper.innerHTML = bodyHtml;
+  document.body.appendChild(wrapper);
+  return html2pdf().set({
+    margin: 0,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+  }).from(wrapper).outputPdf('blob').finally(() => {
+    document.body.removeChild(wrapper);
+  });
 };
 
 const buildInvoiceDoc = (payment, operator) => {
@@ -221,7 +237,8 @@ const buildTxnReceiptDoc = (transaction, payment, operator) => {
 };
 
 // ── Transaction Receipt Modal ──────────────────────────────────
-const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) => {
+const TransactionReceiptModal = ({ transaction, payment, operator, onClose, showToast }) => {
+  const [waSending, setWaSending] = useState(false);
   const outstanding = Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0));
   const handlePrint = () => printDoc(buildTxnReceiptDoc(transaction, payment, operator), `Receipt #${shortId(transaction.id)}`);
   const waMsg = [
@@ -241,7 +258,29 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
     operator?.business_name || 'ShuleRyde',
   ].filter((l) => l !== null).join('\n');
 
-  const handleWaShare = () => { handlePrint(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
+  const handleWaShare = async () => {
+    setWaSending(true);
+    showToast?.('Generating PDF...');
+    try {
+      const blob = await generatePdfBlob(buildTxnReceiptDoc(transaction, payment, operator));
+      const filename = `Receipt-${shortId(transaction.id)}.pdf`;
+      const fd = new FormData();
+      fd.append('pdf', blob, filename);
+      fd.append('phone', formatPhone(payment.parents?.phone));
+      fd.append('caption', waMsg);
+      fd.append('filename', filename);
+      await whatsappAPI.sendDocument(fd);
+      showToast?.('Receipt sent via WhatsApp!');
+    } catch (err) {
+      if (err.response?.status === 503) {
+        window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
+      } else {
+        showToast?.('WhatsApp send failed: ' + (err.response?.data?.error || err.message));
+      }
+    } finally {
+      setWaSending(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -249,9 +288,9 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-ink text-sm sm:text-base">Installment Receipt</h2>
           <div className="flex gap-2 flex-wrap justify-end">
-            <button onClick={handleWaShare}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-              <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
+            <button onClick={handleWaShare} disabled={waSending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-60">
+              <WaIcon /><span>{waSending ? 'Sending...' : 'WhatsApp + PDF'}</span>
             </button>
             <Button onClick={handlePrint} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,7 +361,8 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
 };
 
 // ── Invoice Modal ──────────────────────────────────────────
-const InvoiceModal = ({ payment, operator, onClose }) => {
+const InvoiceModal = ({ payment, operator, onClose, showToast }) => {
+  const [waSending, setWaSending] = useState(false);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
   const handlePrint = () => printDoc(buildInvoiceDoc(payment, operator), `Invoice #${shortId(payment.id)}`);
@@ -341,7 +381,29 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
     operator?.business_name || 'ShuleRyde',
   ].filter((l) => l !== null).join('\n');
 
-  const handleWaShare = () => { handlePrint(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
+  const handleWaShare = async () => {
+    setWaSending(true);
+    showToast?.('Generating PDF...');
+    try {
+      const blob = await generatePdfBlob(buildInvoiceDoc(payment, operator));
+      const filename = `Invoice-${shortId(payment.id)}.pdf`;
+      const fd = new FormData();
+      fd.append('pdf', blob, filename);
+      fd.append('phone', formatPhone(payment.parents?.phone));
+      fd.append('caption', waMsg);
+      fd.append('filename', filename);
+      await whatsappAPI.sendDocument(fd);
+      showToast?.('Invoice sent via WhatsApp!');
+    } catch (err) {
+      if (err.response?.status === 503) {
+        window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
+      } else {
+        showToast?.('WhatsApp send failed: ' + (err.response?.data?.error || err.message));
+      }
+    } finally {
+      setWaSending(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -349,9 +411,9 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-ink text-sm sm:text-base">Invoice Preview</h2>
           <div className="flex gap-2 flex-wrap justify-end">
-            <button onClick={handleWaShare}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-              <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
+            <button onClick={handleWaShare} disabled={waSending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-60">
+              <WaIcon /><span>{waSending ? 'Sending...' : 'WhatsApp + PDF'}</span>
             </button>
             <Button onClick={handlePrint} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,7 +501,8 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
 };
 
 // ── Receipt Modal ──────────────────────────────────────────
-const ReceiptModal = ({ payment, operator, onClose }) => {
+const ReceiptModal = ({ payment, operator, onClose, showToast }) => {
+  const [waSending, setWaSending] = useState(false);
   const installment = latestInstallment(payment);
   const displayAmount = installment ? parseFloat(installment.amount) : parseFloat(payment.amount_collected || payment.amount);
   const handlePrint = () => printDoc(buildReceiptDoc(payment, operator), `Receipt #${shortId(payment.id)}`);
@@ -462,7 +525,29 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
     operator?.business_name || 'ShuleRyde',
   ].filter((l) => l !== null).join('\n');
 
-  const handleWaShare = () => { handlePrint(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
+  const handleWaShare = async () => {
+    setWaSending(true);
+    showToast?.('Generating PDF...');
+    try {
+      const blob = await generatePdfBlob(buildReceiptDoc(payment, operator));
+      const filename = `Receipt-${shortId(payment.id)}.pdf`;
+      const fd = new FormData();
+      fd.append('pdf', blob, filename);
+      fd.append('phone', formatPhone(payment.parents?.phone));
+      fd.append('caption', waMsg);
+      fd.append('filename', filename);
+      await whatsappAPI.sendDocument(fd);
+      showToast?.('Receipt sent via WhatsApp!');
+    } catch (err) {
+      if (err.response?.status === 503) {
+        window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
+      } else {
+        showToast?.('WhatsApp send failed: ' + (err.response?.data?.error || err.message));
+      }
+    } finally {
+      setWaSending(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -470,9 +555,9 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-cloud sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-ink text-sm sm:text-base">Receipt Preview</h2>
           <div className="flex gap-2 flex-wrap justify-end">
-            <button onClick={handleWaShare}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
-              <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
+            <button onClick={handleWaShare} disabled={waSending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-60">
+              <WaIcon /><span>{waSending ? 'Sending...' : 'WhatsApp + PDF'}</span>
             </button>
             <Button onClick={handlePrint} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -989,8 +1074,8 @@ const Payments = () => {
     <div className="max-w-5xl mx-auto">
       {modal === 'add' && <PaymentModal parents={parents} onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />}
       {modal === 'generate' && <GenerateModal onClose={() => setModal(null)} onSaved={(msg) => { setModal(null); load(); showToast(msg); }} />}
-      {docModal?.type === 'invoice' && <InvoiceModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} />}
-      {docModal?.type === 'receipt' && <ReceiptModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} />}
+      {docModal?.type === 'invoice' && <InvoiceModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} showToast={showToast} />}
+      {docModal?.type === 'receipt' && <ReceiptModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} showToast={showToast} />}
       {partialModal && <PartialPaymentModal payment={partialModal} onClose={() => setPartialModal(null)} onSaved={() => { setPartialModal(null); load(); }} />}
       {viewModal && (
         <PaymentDetailsModal
@@ -1006,6 +1091,7 @@ const Payments = () => {
           payment={txnReceiptModal.payment}
           operator={operator}
           onClose={() => setTxnReceiptModal(null)}
+          showToast={showToast}
         />
       )}
 

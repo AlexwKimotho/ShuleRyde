@@ -94,6 +94,12 @@ export const financeAPI = {
   getFinancialSummary: () => api.get('/finance/summary'),
 };
 
+export const whatsappAPI = {
+  sendDocument: (formData) => api.post('/whatsapp/send', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
+
 const adminApi = axios.create({ baseURL: API_URL });
 
 adminApi.interceptors.request.use((config) => {

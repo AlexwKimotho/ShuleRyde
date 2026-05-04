@@ -236,16 +236,27 @@ const buildTxnReceiptDoc = (transaction, payment, operator) => {
     + docFooter(operator);
 };
 
+const studentName = (payment, parentData) => {
+  if (payment.children?.full_name) return payment.children.full_name;
+  const kids = parentData?.children;
+  if (!kids?.length) return null;
+  return kids.length === 1 ? kids[0].full_name : kids.map((k) => k.full_name).join(', ');
+};
+const safeFilename = (name) => (name || '').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-');
+
 // ── Transaction Receipt Modal ──────────────────────────────────
-const TransactionReceiptModal = ({ transaction, payment, operator, onClose, showToast }) => {
+const TransactionReceiptModal = ({ transaction, payment, operator, onClose, showToast, parentData }) => {
   const [waSending, setWaSending] = useState(false);
   const outstanding = Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0));
-  const handlePrint = () => printDoc(buildTxnReceiptDoc(transaction, payment, operator), `Receipt #${shortId(transaction.id)}`);
+  const student = studentName(payment, parentData);
+  const parentName = payment.parents?.full_name || '';
+  const docTitle = `Receipt - ${parentName} - ${shortId(transaction.id)}`;
+  const handlePrint = () => printDoc(buildTxnReceiptDoc(transaction, payment, operator), docTitle);
   const waMsg = [
-    `Hello ${firstName(payment.parents?.full_name)},`,
+    `Hello ${firstName(parentName)},`,
     '',
     `Payment received! Thank you.`,
-    payment.children?.full_name ? `Student: ${payment.children.full_name}` : null,
+    student ? `Student: ${student}` : null,
     '',
     `Month: ${monthLabel(payment.invoice_month)}`,
     `Amount Paid: ${fmt(transaction.amount)}`,
@@ -263,7 +274,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
     showToast?.('Generating PDF...');
     try {
       const blob = await generatePdfBlob(buildTxnReceiptDoc(transaction, payment, operator));
-      const filename = `Receipt-${shortId(transaction.id)}.pdf`;
+      const filename = `Receipt-${safeFilename(parentName)}-${shortId(transaction.id)}.pdf`;
       const fd = new FormData();
       fd.append('pdf', blob, filename);
       fd.append('phone', formatPhone(payment.parents?.phone));
@@ -361,16 +372,19 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
 };
 
 // ── Invoice Modal ──────────────────────────────────────────
-const InvoiceModal = ({ payment, operator, onClose, showToast }) => {
+const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => {
   const [waSending, setWaSending] = useState(false);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
-  const handlePrint = () => printDoc(buildInvoiceDoc(payment, operator), `Invoice #${shortId(payment.id)}`);
+  const student = studentName(payment, parentData);
+  const parentName = payment.parents?.full_name || '';
+  const docTitle = `Invoice - ${parentName} - ${shortId(payment.id)}`;
+  const handlePrint = () => printDoc(buildInvoiceDoc(payment, operator), docTitle);
   const waMsg = [
-    `Hello ${firstName(payment.parents?.full_name)},`,
+    `Hello ${firstName(parentName)},`,
     '',
     `Your school transport invoice for ${monthLabel(payment.invoice_month)} is ready.`,
-    payment.children?.full_name ? `Student: ${payment.children.full_name}` : null,
+    student ? `Student: ${student}` : null,
     '',
     `Amount Due: ${fmt(payment.amount)}`,
     `Invoice #${shortId(payment.id)}`,
@@ -386,7 +400,7 @@ const InvoiceModal = ({ payment, operator, onClose, showToast }) => {
     showToast?.('Generating PDF...');
     try {
       const blob = await generatePdfBlob(buildInvoiceDoc(payment, operator));
-      const filename = `Invoice-${shortId(payment.id)}.pdf`;
+      const filename = `Invoice-${safeFilename(parentName)}-${shortId(payment.id)}.pdf`;
       const fd = new FormData();
       fd.append('pdf', blob, filename);
       fd.append('phone', formatPhone(payment.parents?.phone));
@@ -501,19 +515,22 @@ const InvoiceModal = ({ payment, operator, onClose, showToast }) => {
 };
 
 // ── Receipt Modal ──────────────────────────────────────────
-const ReceiptModal = ({ payment, operator, onClose, showToast }) => {
+const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => {
   const [waSending, setWaSending] = useState(false);
   const installment = latestInstallment(payment);
   const displayAmount = installment ? parseFloat(installment.amount) : parseFloat(payment.amount_collected || payment.amount);
-  const handlePrint = () => printDoc(buildReceiptDoc(payment, operator), `Receipt #${shortId(payment.id)}`);
+  const student = studentName(payment, parentData);
+  const parentName = payment.parents?.full_name || '';
+  const docTitle = `Receipt - ${parentName} - ${shortId(payment.id)}`;
+  const handlePrint = () => printDoc(buildReceiptDoc(payment, operator), docTitle);
   const datePaid = installment?.paid_at
     ? new Date(installment.paid_at).toLocaleDateString('en-KE')
     : payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-KE') : '';
   const waMsg = [
-    `Hello ${firstName(payment.parents?.full_name)},`,
+    `Hello ${firstName(parentName)},`,
     '',
     `Payment received! Thank you.`,
-    payment.children?.full_name ? `Student: ${payment.children.full_name}` : null,
+    student ? `Student: ${student}` : null,
     '',
     `Month: ${monthLabel(payment.invoice_month)}`,
     `Amount Paid: ${fmt(displayAmount)}`,
@@ -530,7 +547,7 @@ const ReceiptModal = ({ payment, operator, onClose, showToast }) => {
     showToast?.('Generating PDF...');
     try {
       const blob = await generatePdfBlob(buildReceiptDoc(payment, operator));
-      const filename = `Receipt-${shortId(payment.id)}.pdf`;
+      const filename = `Receipt-${safeFilename(parentName)}-${shortId(payment.id)}.pdf`;
       const fd = new FormData();
       fd.append('pdf', blob, filename);
       fd.append('phone', formatPhone(payment.parents?.phone));
@@ -1074,8 +1091,8 @@ const Payments = () => {
     <div className="max-w-5xl mx-auto">
       {modal === 'add' && <PaymentModal parents={parents} onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />}
       {modal === 'generate' && <GenerateModal onClose={() => setModal(null)} onSaved={(msg) => { setModal(null); load(); showToast(msg); }} />}
-      {docModal?.type === 'invoice' && <InvoiceModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} showToast={showToast} />}
-      {docModal?.type === 'receipt' && <ReceiptModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} showToast={showToast} />}
+      {docModal?.type === 'invoice' && <InvoiceModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} showToast={showToast} parentData={parents.find((p) => p.id === docModal.payment.parent_id)} />}
+      {docModal?.type === 'receipt' && <ReceiptModal payment={docModal.payment} operator={operator} onClose={() => setDocModal(null)} showToast={showToast} parentData={parents.find((p) => p.id === docModal.payment.parent_id)} />}
       {partialModal && <PartialPaymentModal payment={partialModal} onClose={() => setPartialModal(null)} onSaved={() => { setPartialModal(null); load(); }} />}
       {viewModal && (
         <PaymentDetailsModal
@@ -1092,6 +1109,7 @@ const Payments = () => {
           operator={operator}
           onClose={() => setTxnReceiptModal(null)}
           showToast={showToast}
+          parentData={parents.find((p) => p.id === txnReceiptModal.payment.parent_id)}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { paymentsAPI, parentsAPI, schoolsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
@@ -44,53 +44,186 @@ const latestInstallment = (p) => {
   return [...txns].sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))[0];
 };
 
-const usePrint = (ref) => () => {
-  const content = ref.current?.innerHTML;
-  if (!content) return;
-  const win = window.open('', '_blank', 'width=800,height=600');
-  win.document.write(`
-    <!DOCTYPE html><html><head>
-    <title>ShuleRyde Document</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #2C3E50; background: white; padding: 40px; }
-      .doc { max-width: 680px; margin: 0 auto; }
-      .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 2px solid #6B9080; padding-bottom: 20px; }
-      .brand { font-size: 22px; font-weight: 700; color: #6B9080; }
-      .brand span { display: block; font-size: 12px; font-weight: 400; color: #5A6C7D; margin-top: 2px; }
-      .doc-title { text-align: right; }
-      .doc-title h1 { font-size: 28px; font-weight: 800; letter-spacing: 2px; color: #2C3E50; }
-      .doc-title p { font-size: 12px; color: #5A6C7D; margin-top: 4px; }
-      .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
-      .meta-block h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #5A6C7D; margin-bottom: 6px; }
-      .meta-block p { font-size: 14px; color: #2C3E50; line-height: 1.5; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-      thead th { background: #F8F6F1; padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #5A6C7D; border-bottom: 1px solid #EAE7DC; }
-      tbody td { padding: 14px; font-size: 14px; border-bottom: 1px solid #EAE7DC; }
-      .total-row { background: #F8F6F1; }
-      .total-row td { font-weight: 700; font-size: 15px; padding: 14px; }
-      .amount { text-align: right; }
-      .badge { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; }
-      .badge-paid { background: #dcfce7; color: #15803d; }
-      .badge-pending { background: #fef3c7; color: #92400e; }
-      .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #EAE7DC; font-size: 12px; color: #5A6C7D; text-align: center; }
-      .mpesa-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-top: 24px; }
-      .mpesa-box h4 { font-size: 12px; font-weight: 600; color: #166534; margin-bottom: 6px; }
-      .mpesa-box p { font-size: 13px; color: #15803d; }
-      @media print { body { padding: 20px; } }
-    </style>
-    </head><body><div class="doc">${content}</div></body></html>
-  `);
+// ── PDF document builders (inline-styled, Tailwind-independent) ───────────────
+const FONT = `font-family:'Helvetica Neue',Arial,sans-serif`;
+const nowLabel = () => new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' });
+
+const docHeader = (operator, type, refId, statusLabel, statusColors) => `
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:3px solid #6B9080;">
+    <div>
+      <div style="font-size:24px;font-weight:800;color:#6B9080;letter-spacing:-0.5px;">ShuleRyde</div>
+      ${operator?.business_name ? `<div style="font-size:13px;color:#64748b;margin-top:4px;">${operator.business_name}</div>` : ''}
+      ${operator?.phone ? `<div style="font-size:13px;color:#64748b;">${operator.phone}</div>` : ''}
+      <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Generated: ${nowLabel()}</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:32px;font-weight:900;letter-spacing:4px;color:#1a2332;line-height:1;">${type}</div>
+      <div style="font-size:13px;color:#64748b;margin-top:6px;">#${refId}</div>
+      <div style="display:inline-block;margin-top:8px;padding:4px 14px;border-radius:99px;font-size:11px;font-weight:600;letter-spacing:0.5px;background:${statusColors.bg};color:${statusColors.text};">${statusLabel}</div>
+    </div>
+  </div>`;
+
+const docPartyBlock = (label, name, phone, child) => `
+  <div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:8px;">${label}</div>
+    <div style="font-size:16px;font-weight:700;color:#1a2332;">${name || ''}</div>
+    <div style="font-size:13px;color:#64748b;margin-top:3px;">${phone || ''}</div>
+    ${child ? `<div style="font-size:12px;color:#6B9080;margin-top:4px;font-weight:500;">Student: ${child}</div>` : ''}
+  </div>`;
+
+const docTable = (rows, totalLabel, totalAmt, extraFooter = '') => `
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+    <thead>
+      <tr style="background:#f8fafc;">
+        <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;border-bottom:2px solid #e2e8f0;">Description</th>
+        <th style="padding:12px 16px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;border-bottom:2px solid #e2e8f0;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+    <tfoot>
+      <tr style="background:#f8fafc;">
+        <td style="padding:14px 16px;font-size:15px;font-weight:700;color:#1a2332;border-top:2px solid #e2e8f0;">${totalLabel}</td>
+        <td style="padding:14px 16px;text-align:right;font-size:15px;font-weight:700;color:#1a2332;border-top:2px solid #e2e8f0;">${totalAmt}</td>
+      </tr>
+      ${extraFooter}
+    </tfoot>
+  </table>`;
+
+const docFooter = (operator) => `
+  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;line-height:1.6;">
+    Thank you for trusting ShuleRyde with your child's transport.<br>
+    ${operator?.business_name || 'ShuleRyde'} &nbsp;·&nbsp; Generated ${nowLabel()}
+  </div>`;
+
+const printDoc = (bodyHtml, title = 'ShuleRyde Document') => {
+  const win = window.open('', '_blank', 'width=820,height=700');
+  if (!win) return;
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{background:#fff;${FONT};}
+    @page{margin:1.5cm;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style>
+    </head><body><div style="max-width:700px;margin:0 auto;padding:48px 40px;">${bodyHtml}</div></body></html>`);
   win.document.close();
   win.focus();
-  setTimeout(() => { win.print(); win.close(); }, 400);
+  setTimeout(() => win.print(), 500);
+};
+
+const buildInvoiceDoc = (payment, operator) => {
+  const dueDate = new Date();
+  dueDate.setDate(dueDate.getDate() + 7);
+  const status = payment.status;
+  const statusColors = status === 'PAID'
+    ? { bg: '#dcfce7', text: '#15803d' }
+    : status === 'PARTIALLY_PAID'
+    ? { bg: '#dbeafe', text: '#1d4ed8' }
+    : { bg: '#fef3c7', text: '#92400e' };
+  const statusLabel = status === 'PARTIALLY_PAID' ? 'PARTIAL' : (status || 'PENDING');
+
+  const row = `<tr><td style="padding:18px 16px;border-bottom:1px solid #f1f5f9;">
+    <div style="font-size:14px;font-weight:600;color:#1a2332;">School Transport Fee</div>
+    <div style="font-size:12px;color:#64748b;margin-top:3px;">${monthLabel(payment.invoice_month)}</div>
+  </td><td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;color:#1a2332;border-bottom:1px solid #f1f5f9;">${fmt(payment.amount)}</td></tr>`;
+
+  const partial = status === 'PARTIALLY_PAID' ? `
+    <div style="background:#eff6ff;border-left:4px solid #3b82f6;border-radius:4px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#2563eb;margin-bottom:6px;">Partial Payment Received</div>
+      <div style="font-size:13px;color:#1d4ed8;">Paid: <strong>${fmt(payment.amount_collected)}</strong> &nbsp;|&nbsp; Outstanding: <strong>${fmt(parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0))}</strong></div>
+    </div>` : '';
+
+  const mpesa = operator?.mpesa_paybill ? `
+    <div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:4px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#166534;margin-bottom:6px;">Pay via M-Pesa</div>
+      <div style="font-size:13px;color:#15803d;">Paybill / Till: <strong>${operator.mpesa_paybill}</strong> &nbsp;·&nbsp; Account: <strong>${shortId(payment.id)}</strong></div>
+    </div>` : '';
+
+  return docHeader(operator, 'INVOICE', shortId(payment.id), statusLabel, statusColors)
+    + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px;">`
+    + docPartyBlock('Bill To', payment.parents?.full_name, payment.parents?.phone, payment.children?.full_name)
+    + `<div style="text-align:right;">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:4px;">Issue Date</div>
+          <div style="font-size:13px;color:#1a2332;">${new Date().toLocaleDateString('en-KE')}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:4px;">Due Date</div>
+          <div style="font-size:14px;font-weight:700;color:#dc2626;">${dueDate.toLocaleDateString('en-KE')}</div>
+        </div>
+      </div></div>`
+    + docTable(row, 'Total Due', fmt(payment.amount))
+    + partial + mpesa
+    + docFooter(operator);
+};
+
+const buildReceiptDoc = (payment, operator) => {
+  const installment = latestInstallment(payment);
+  const displayAmt = installment ? parseFloat(installment.amount) : parseFloat(payment.amount_collected || payment.amount);
+  const datePaid = installment?.paid_at
+    ? new Date(installment.paid_at).toLocaleDateString('en-KE')
+    : payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-KE') : '';
+  const method = installment?.payment_method || payment.payment_method || 'Cash';
+  const isPartial = payment.status === 'PARTIALLY_PAID';
+  const statusColors = isPartial ? { bg: '#dbeafe', text: '#1d4ed8' } : { bg: '#dcfce7', text: '#15803d' };
+
+  const row = `<tr><td style="padding:18px 16px;border-bottom:1px solid #f1f5f9;">
+    <div style="font-size:14px;font-weight:600;color:#1a2332;">School Transport Fee</div>
+    <div style="font-size:12px;color:#64748b;margin-top:3px;">${monthLabel(payment.invoice_month)}</div>
+    ${isPartial ? `<div style="font-size:11px;color:#3b82f6;margin-top:3px;">Latest installment · Full invoice: ${fmt(payment.amount)}</div>` : ''}
+  </td><td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;color:#1a2332;border-bottom:1px solid #f1f5f9;">${fmt(displayAmt)}</td></tr>`;
+
+  const confirmed = `
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin-bottom:24px;text-align:center;">
+      <div style="font-size:14px;font-weight:600;color:#166534;">Payment Confirmed</div>
+      <div style="font-size:12px;color:#15803d;margin-top:4px;">
+        ${isPartial
+          ? `Installment receipt for ${monthLabel(payment.invoice_month)}. Balance: ${fmt(Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0)))}`
+          : `This receipt confirms full payment for ${monthLabel(payment.invoice_month)}.`}
+      </div>
+    </div>`;
+
+  return docHeader(operator, 'RECEIPT', shortId(payment.id), isPartial ? 'PARTIAL' : 'PAID', statusColors)
+    + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px;">`
+    + docPartyBlock('Received From', payment.parents?.full_name, payment.parents?.phone, payment.children?.full_name)
+    + `<div style="text-align:right;">
+        ${datePaid ? `<div style="margin-bottom:14px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:4px;">Date Paid</div><div style="font-size:13px;font-weight:600;color:#1a2332;">${datePaid}</div></div>` : ''}
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:4px;">Method</div><div style="font-size:13px;color:#1a2332;">${method}</div></div>
+      </div></div>`
+    + docTable(row, 'Amount Received', fmt(displayAmt))
+    + confirmed
+    + docFooter(operator);
+};
+
+const buildTxnReceiptDoc = (transaction, payment, operator) => {
+  const outstanding = Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0));
+
+  const row = `<tr><td style="padding:18px 16px;border-bottom:1px solid #f1f5f9;">
+    <div style="font-size:14px;font-weight:600;color:#1a2332;">School Transport Fee — Installment</div>
+    <div style="font-size:12px;color:#64748b;margin-top:3px;">${monthLabel(payment.invoice_month)}</div>
+    ${transaction.notes ? `<div style="font-size:12px;color:#64748b;margin-top:2px;">${transaction.notes}</div>` : ''}
+  </td><td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;color:#1a2332;border-bottom:1px solid #f1f5f9;">${fmt(transaction.amount)}</td></tr>`;
+
+  const extraFooterRow = outstanding > 0
+    ? `<tr style="background:#fefce8;"><td colspan="2" style="padding:10px 16px;font-size:13px;color:#854d0e;border-top:1px solid #e2e8f0;">Balance Remaining: <strong>${fmt(outstanding)}</strong></td></tr>`
+    : '';
+
+  return docHeader(operator, 'RECEIPT', shortId(transaction.id),
+      'INSTALLMENT', { bg: '#dcfce7', text: '#15803d' })
+    + `<div style="font-size:11px;color:#64748b;margin-top:-28px;margin-bottom:28px;text-align:right;">Installment Receipt</div>`
+    + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px;">`
+    + docPartyBlock('Received From', payment.parents?.full_name, payment.parents?.phone, payment.children?.full_name)
+    + `<div style="text-align:right;">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:4px;">Date Paid</div>
+          <div style="font-size:13px;font-weight:600;color:#1a2332;">${new Date(transaction.paid_at).toLocaleDateString('en-KE')}</div>
+        </div>
+        <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#94a3b8;margin-bottom:4px;">Method</div><div style="font-size:13px;color:#1a2332;">${transaction.payment_method || 'Cash'}</div></div>
+      </div></div>`
+    + docTable(row, 'Amount Paid', fmt(transaction.amount), extraFooterRow)
+    + docFooter(operator);
 };
 
 // ── Transaction Receipt Modal ──────────────────────────────────
 const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) => {
-  const ref = useRef();
-  const print = usePrint(ref);
   const outstanding = Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0));
+  const handlePrint = () => printDoc(buildTxnReceiptDoc(transaction, payment, operator), `Receipt #${shortId(transaction.id)}`);
   const waMsg = [
     `Hello ${firstName(payment.parents?.full_name)},`,
     '',
@@ -108,7 +241,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
     operator?.business_name || 'ShuleRyde',
   ].filter((l) => l !== null).join('\n');
 
-  const handleWaShare = () => { print(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
+  const handleWaShare = () => { handlePrint(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -120,7 +253,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
               <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
             </button>
-            <Button onClick={print} size="sm">
+            <Button onClick={handlePrint} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
@@ -130,7 +263,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
             <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </div>
-        <div className="p-5 sm:p-8 font-sans text-ink" ref={ref}>
+        <div className="p-5 sm:p-8 font-sans text-ink">
           <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-sage-500">
             <div>
               <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
@@ -190,10 +323,9 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose }) =>
 
 // ── Invoice Modal ──────────────────────────────────────────
 const InvoiceModal = ({ payment, operator, onClose }) => {
-  const ref = useRef();
-  const print = usePrint(ref);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
+  const handlePrint = () => printDoc(buildInvoiceDoc(payment, operator), `Invoice #${shortId(payment.id)}`);
   const waMsg = [
     `Hello ${firstName(payment.parents?.full_name)},`,
     '',
@@ -209,7 +341,7 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
     operator?.business_name || 'ShuleRyde',
   ].filter((l) => l !== null).join('\n');
 
-  const handleWaShare = () => { print(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
+  const handleWaShare = () => { handlePrint(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -221,7 +353,7 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
               <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
             </button>
-            <Button onClick={print} size="sm">
+            <Button onClick={handlePrint} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
@@ -231,7 +363,7 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
             <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </div>
-        <div className="p-5 sm:p-8 font-sans text-ink" ref={ref}>
+        <div className="p-5 sm:p-8 font-sans text-ink">
           <div className="flex justify-between items-start mb-8 sm:mb-10 pb-5 border-b-2 border-sage-500">
             <div>
               <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
@@ -308,10 +440,9 @@ const InvoiceModal = ({ payment, operator, onClose }) => {
 
 // ── Receipt Modal ──────────────────────────────────────────
 const ReceiptModal = ({ payment, operator, onClose }) => {
-  const ref = useRef();
-  const print = usePrint(ref);
   const installment = latestInstallment(payment);
   const displayAmount = installment ? parseFloat(installment.amount) : parseFloat(payment.amount_collected || payment.amount);
+  const handlePrint = () => printDoc(buildReceiptDoc(payment, operator), `Receipt #${shortId(payment.id)}`);
   const datePaid = installment?.paid_at
     ? new Date(installment.paid_at).toLocaleDateString('en-KE')
     : payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-KE') : '';
@@ -331,7 +462,7 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
     operator?.business_name || 'ShuleRyde',
   ].filter((l) => l !== null).join('\n');
 
-  const handleWaShare = () => { print(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
+  const handleWaShare = () => { handlePrint(); setTimeout(() => window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer'), 800); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 px-0 sm:px-4 py-0 sm:py-8 overflow-y-auto">
@@ -343,7 +474,7 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
               <WaIcon /><span className="hidden sm:inline">WhatsApp + PDF</span><span className="sm:hidden">WhatsApp</span>
             </button>
-            <Button onClick={print} size="sm">
+            <Button onClick={handlePrint} size="sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
@@ -353,7 +484,7 @@ const ReceiptModal = ({ payment, operator, onClose }) => {
             <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
           </div>
         </div>
-        <div className="p-5 sm:p-8 font-sans text-ink" ref={ref}>
+        <div className="p-5 sm:p-8 font-sans text-ink">
           <div className="flex justify-between items-start mb-8 sm:mb-10 pb-5 border-b-2 border-sage-500">
             <div>
               <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
@@ -838,78 +969,19 @@ const Payments = () => {
 
   const bulkDownload = (type) => {
     const docs = type === 'invoices'
-      ? filtered.filter(p => p.status === 'PENDING')
-      : filtered.filter(p => p.status === 'PAID' || p.status === 'PARTIALLY_PAID');
+      ? filtered.filter((p) => p.status === 'PENDING')
+      : filtered.filter((p) => p.status === 'PAID' || p.status === 'PARTIALLY_PAID');
     if (!docs.length) { showToast(`No ${type} in current view`); return; }
-    if (docs.length > 10) {
-      showToast(`Opening ${docs.length} windows — allow popups if prompted`);
-    }
-
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 7);
-
-    const openDoc = (p, idx) => {
-      const isInvoice = type === 'invoices';
-      const installment = latestInstallment(p);
-      const displayAmt = installment ? parseFloat(installment.amount) : parseFloat(p.amount_collected || p.amount);
-      const html = `
-        <div style="max-width:680px;margin:0 auto;padding:40px 20px;font-family:'Helvetica Neue',Arial,sans-serif;color:#2C3E50;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #6B9080;padding-bottom:20px;margin-bottom:32px;">
-            <div>
-              <p style="font-size:20px;font-weight:700;color:#6B9080;">ShuleRyde</p>
-              <p style="font-size:12px;color:#5A6C7D;">${operator?.business_name || ''}</p>
-              <p style="font-size:12px;color:#5A6C7D;">${operator?.phone || ''}</p>
-            </div>
-            <div style="text-align:right;">
-              <h1 style="font-size:26px;font-weight:800;letter-spacing:2px;color:#2C3E50;">${isInvoice ? 'INVOICE' : 'RECEIPT'}</h1>
-              <p style="font-size:12px;color:#5A6C7D;">#${shortId(p.id)}</p>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px;">
-            <div>
-              <p style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#5A6C7D;margin-bottom:4px;">${isInvoice ? 'Bill To' : 'Received From'}</p>
-              <p style="font-size:14px;font-weight:600;color:#2C3E50;">${p.parents?.full_name || ''}</p>
-              <p style="font-size:13px;color:#5A6C7D;">${p.parents?.phone || ''}</p>
-              ${p.children?.full_name ? `<p style="font-size:12px;color:#6B9080;margin-top:2px;">Student: ${p.children.full_name}</p>` : ''}
-            </div>
-            <div style="text-align:right;">
-              <p style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#5A6C7D;">${isInvoice ? 'Due Date' : 'Date Paid'}</p>
-              <p style="font-size:14px;font-weight:600;color:#2C3E50;">${isInvoice ? dueDate.toLocaleDateString('en-KE') : (p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-KE') : '—')}</p>
-            </div>
-          </div>
-          <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-            <thead><tr style="background:#F8F6F1;border-bottom:1px solid #EAE7DC;">
-              <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;color:#5A6C7D;">Description</th>
-              <th style="padding:10px 14px;text-align:right;font-size:11px;text-transform:uppercase;color:#5A6C7D;">Amount</th>
-            </tr></thead>
-            <tbody><tr style="border-bottom:1px solid #EAE7DC;">
-              <td style="padding:14px;font-size:14px;">
-                <p style="font-weight:600;">School Transport Fee</p>
-                <p style="font-size:12px;color:#5A6C7D;">${monthLabel(p.invoice_month)}</p>
-              </td>
-              <td style="padding:14px;text-align:right;font-size:14px;font-weight:600;">${isInvoice ? fmt(p.amount) : fmt(displayAmt)}</td>
-            </tr></tbody>
-            <tfoot><tr style="background:#F8F6F1;">
-              <td style="padding:14px;font-size:15px;font-weight:700;">${isInvoice ? 'Total Due' : 'Total Received'}</td>
-              <td style="padding:14px;text-align:right;font-size:15px;font-weight:700;">${isInvoice ? fmt(p.amount) : fmt(displayAmt)}</td>
-            </tr></tfoot>
-          </table>
-          <p style="font-size:12px;color:#5A6C7D;text-align:center;margin-top:32px;">Thank you for trusting ShuleRyde with your child's transport.</p>
-        </div>`;
-
+    if (docs.length > 10) showToast(`Opening ${docs.length} windows — allow popups if prompted`);
+    docs.forEach((p, idx) => {
       setTimeout(() => {
-        const win = window.open('', '_blank', 'width=800,height=600');
-        if (!win) return;
-        win.document.write(`<!DOCTYPE html><html><head><title>ShuleRyde ${isInvoice ? 'Invoice' : 'Receipt'} #${shortId(p.id)}</title>
-          <style>* { box-sizing:border-box; margin:0; padding:0; } body { background:white; } @media print { body { margin:0; } }</style>
-          </head><body>${html}</body></html>`);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); }, 600);
-      }, idx * 400);
-    };
-
-    docs.forEach(openDoc);
+        const isInvoice = type === 'invoices';
+        printDoc(
+          isInvoice ? buildInvoiceDoc(p, operator) : buildReceiptDoc(p, operator),
+          `ShuleRyde ${isInvoice ? 'Invoice' : 'Receipt'} #${shortId(p.id)}`
+        );
+      }, idx * 500);
+    });
     showToast(`Opening ${docs.length} ${type} for printing`);
   };
 

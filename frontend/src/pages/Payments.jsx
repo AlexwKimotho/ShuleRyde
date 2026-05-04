@@ -283,11 +283,10 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
       await whatsappAPI.sendDocument(fd);
       showToast?.('Receipt sent via WhatsApp!');
     } catch (err) {
-      if (err.response?.status === 503) {
-        window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
-      } else {
-        showToast?.('WhatsApp send failed: ' + (err.response?.data?.error || err.message));
-      }
+      const errMsg = err.response?.data?.error || err.message || 'Unknown error';
+      console.error('[WhatsApp]', err.response?.status, errMsg);
+      showToast?.(`WhatsApp error (${err.response?.status || 'network'}): ${errMsg}`);
+      window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
     } finally {
       setWaSending(false);
     }
@@ -409,11 +408,10 @@ const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => 
       await whatsappAPI.sendDocument(fd);
       showToast?.('Invoice sent via WhatsApp!');
     } catch (err) {
-      if (err.response?.status === 503) {
-        window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
-      } else {
-        showToast?.('WhatsApp send failed: ' + (err.response?.data?.error || err.message));
-      }
+      const errMsg = err.response?.data?.error || err.message || 'Unknown error';
+      console.error('[WhatsApp]', err.response?.status, errMsg);
+      showToast?.(`WhatsApp error (${err.response?.status || 'network'}): ${errMsg}`);
+      window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
     } finally {
       setWaSending(false);
     }
@@ -556,11 +554,10 @@ const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => 
       await whatsappAPI.sendDocument(fd);
       showToast?.('Receipt sent via WhatsApp!');
     } catch (err) {
-      if (err.response?.status === 503) {
-        window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
-      } else {
-        showToast?.('WhatsApp send failed: ' + (err.response?.data?.error || err.message));
-      }
+      const errMsg = err.response?.data?.error || err.message || 'Unknown error';
+      console.error('[WhatsApp]', err.response?.status, errMsg);
+      showToast?.(`WhatsApp error (${err.response?.status || 'network'}): ${errMsg}`);
+      window.open(waLink(payment.parents?.phone, waMsg), '_blank', 'noopener,noreferrer');
     } finally {
       setWaSending(false);
     }

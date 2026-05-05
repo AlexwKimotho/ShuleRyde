@@ -52,9 +52,8 @@ const nowLabel = () => new Date().toLocaleDateString('en-KE', { year: 'numeric',
 const docHeader = (operator, type, refId, statusLabel, statusColors) => `
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:24px;border-bottom:3px solid #6B9080;">
     <div>
-      <div style="font-size:24px;font-weight:800;color:#6B9080;letter-spacing:-0.5px;">ShuleRyde</div>
-      ${operator?.business_name ? `<div style="font-size:13px;color:#64748b;margin-top:4px;">${operator.business_name}</div>` : ''}
-      ${operator?.phone ? `<div style="font-size:13px;color:#64748b;">${operator.phone}</div>` : ''}
+      <div style="font-size:24px;font-weight:800;color:#6B9080;letter-spacing:-0.5px;">${operator?.business_name || 'ShuleRyde'}</div>
+      ${operator?.phone ? `<div style="font-size:13px;color:#64748b;margin-top:4px;">${operator.phone}</div>` : ''}
       <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Generated: ${nowLabel()}</div>
     </div>
     <div style="text-align:right;">
@@ -92,7 +91,6 @@ const docTable = (rows, totalLabel, totalAmt, extraFooter = '') => `
 
 const docFooter = (operator) => `
   <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;line-height:1.6;">
-    Thank you for trusting ShuleRyde with your child's transport.<br>
     ${operator?.business_name || 'ShuleRyde'} &nbsp;·&nbsp; Generated ${nowLabel()}
   </div>`;
 
@@ -123,7 +121,7 @@ const generatePdfBlob = (bodyHtml) => {
   });
 };
 
-const buildInvoiceDoc = (payment, operator) => {
+const buildInvoiceDoc = (payment, operator, studentLabel) => {
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 7);
   const status = payment.status;
@@ -133,9 +131,10 @@ const buildInvoiceDoc = (payment, operator) => {
     ? { bg: '#dbeafe', text: '#1d4ed8' }
     : { bg: '#fef3c7', text: '#92400e' };
   const statusLabel = status === 'PARTIALLY_PAID' ? 'PARTIAL' : (status || 'PENDING');
+  const descLabel = studentLabel || payment.children?.full_name || 'School Transport';
 
   const row = `<tr><td style="padding:18px 16px;border-bottom:1px solid #f1f5f9;">
-    <div style="font-size:14px;font-weight:600;color:#1a2332;">School Transport Fee</div>
+    <div style="font-size:14px;font-weight:600;color:#1a2332;">${descLabel}</div>
     <div style="font-size:12px;color:#64748b;margin-top:3px;">${monthLabel(payment.invoice_month)}</div>
   </td><td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;color:#1a2332;border-bottom:1px solid #f1f5f9;">${fmt(payment.amount)}</td></tr>`;
 
@@ -169,7 +168,7 @@ const buildInvoiceDoc = (payment, operator) => {
     + docFooter(operator);
 };
 
-const buildReceiptDoc = (payment, operator) => {
+const buildReceiptDoc = (payment, operator, studentLabel) => {
   const installment = latestInstallment(payment);
   const displayAmt = installment ? parseFloat(installment.amount) : parseFloat(payment.amount_collected || payment.amount);
   const datePaid = installment?.paid_at
@@ -178,9 +177,10 @@ const buildReceiptDoc = (payment, operator) => {
   const method = installment?.payment_method || payment.payment_method || 'Cash';
   const isPartial = payment.status === 'PARTIALLY_PAID';
   const statusColors = isPartial ? { bg: '#dbeafe', text: '#1d4ed8' } : { bg: '#dcfce7', text: '#15803d' };
+  const descLabel = studentLabel || payment.children?.full_name || 'School Transport';
 
   const row = `<tr><td style="padding:18px 16px;border-bottom:1px solid #f1f5f9;">
-    <div style="font-size:14px;font-weight:600;color:#1a2332;">School Transport Fee</div>
+    <div style="font-size:14px;font-weight:600;color:#1a2332;">${descLabel}</div>
     <div style="font-size:12px;color:#64748b;margin-top:3px;">${monthLabel(payment.invoice_month)}</div>
     ${isPartial ? `<div style="font-size:11px;color:#3b82f6;margin-top:3px;">Latest installment · Full invoice: ${fmt(payment.amount)}</div>` : ''}
   </td><td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;color:#1a2332;border-bottom:1px solid #f1f5f9;">${fmt(displayAmt)}</td></tr>`;
@@ -207,11 +207,12 @@ const buildReceiptDoc = (payment, operator) => {
     + docFooter(operator);
 };
 
-const buildTxnReceiptDoc = (transaction, payment, operator) => {
+const buildTxnReceiptDoc = (transaction, payment, operator, studentLabel) => {
   const outstanding = Math.max(0, parseFloat(payment.amount) - parseFloat(payment.amount_collected || 0));
+  const descLabel = studentLabel || payment.children?.full_name || 'School Transport';
 
   const row = `<tr><td style="padding:18px 16px;border-bottom:1px solid #f1f5f9;">
-    <div style="font-size:14px;font-weight:600;color:#1a2332;">School Transport Fee — Installment</div>
+    <div style="font-size:14px;font-weight:600;color:#1a2332;">${descLabel} — Installment</div>
     <div style="font-size:12px;color:#64748b;margin-top:3px;">${monthLabel(payment.invoice_month)}</div>
     ${transaction.notes ? `<div style="font-size:12px;color:#64748b;margin-top:2px;">${transaction.notes}</div>` : ''}
   </td><td style="padding:18px 16px;text-align:right;font-size:14px;font-weight:600;color:#1a2332;border-bottom:1px solid #f1f5f9;">${fmt(transaction.amount)}</td></tr>`;
@@ -251,7 +252,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
   const student = studentName(payment, parentData);
   const parentName = payment.parents?.full_name || '';
   const docTitle = `Receipt - ${parentName} - ${shortId(transaction.id)}`;
-  const handlePrint = () => printDoc(buildTxnReceiptDoc(transaction, payment, operator), docTitle);
+  const handlePrint = () => printDoc(buildTxnReceiptDoc(transaction, payment, operator, student), docTitle);
   const waMsg = [
     `Hello ${firstName(parentName)},`,
     '',
@@ -273,7 +274,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
     setWaSending(true);
     showToast?.('Generating PDF...');
     try {
-      const blob = await generatePdfBlob(buildTxnReceiptDoc(transaction, payment, operator));
+      const blob = await generatePdfBlob(buildTxnReceiptDoc(transaction, payment, operator, student));
       const filename = `Receipt-${safeFilename(parentName)}-${shortId(transaction.id)}.pdf`;
       const fd = new FormData();
       fd.append('pdf', blob, filename);
@@ -315,8 +316,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
         <div className="p-5 sm:p-8 font-sans text-ink">
           <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-sage-500">
             <div>
-              <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
-              <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
+              <p className="text-lg sm:text-xl font-bold text-sage-600">{operator?.business_name || 'ShuleRyde'}</p>
               <p className="text-sm text-slate">{operator?.phone}</p>
             </div>
             <div className="text-right">
@@ -348,9 +348,8 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
             <tbody>
               <tr className="border-b border-cloud">
                 <td className="px-4 py-4">
-                  <p className="font-medium text-ink">School Transport Fee — Installment</p>
+                  <p className="font-medium text-ink">{student || 'School Transport'} — Installment</p>
                   <p className="text-xs text-slate mt-0.5">{monthLabel(payment.invoice_month)}</p>
-                  {payment.children?.full_name && <p className="text-xs text-sage-600 mt-0.5">Student: {payment.children.full_name}</p>}
                   {transaction.notes && <p className="text-xs text-slate mt-0.5">{transaction.notes}</p>}
                 </td>
                 <td className="px-4 py-4 text-right font-medium">{fmt(transaction.amount)}</td>
@@ -363,7 +362,7 @@ const TransactionReceiptModal = ({ transaction, payment, operator, onClose, show
               </tr>
             </tfoot>
           </table>
-          <p className="text-xs text-slate text-center mt-4">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
+          <p className="text-xs text-slate text-center mt-4">{operator?.business_name || 'ShuleRyde'}</p>
         </div>
       </div>
     </div>
@@ -378,7 +377,7 @@ const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => 
   const student = studentName(payment, parentData);
   const parentName = payment.parents?.full_name || '';
   const docTitle = `Invoice - ${parentName} - ${shortId(payment.id)}`;
-  const handlePrint = () => printDoc(buildInvoiceDoc(payment, operator), docTitle);
+  const handlePrint = () => printDoc(buildInvoiceDoc(payment, operator, student), docTitle);
   const waMsg = [
     `Hello ${firstName(parentName)},`,
     '',
@@ -398,7 +397,7 @@ const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => 
     setWaSending(true);
     showToast?.('Generating PDF...');
     try {
-      const blob = await generatePdfBlob(buildInvoiceDoc(payment, operator));
+      const blob = await generatePdfBlob(buildInvoiceDoc(payment, operator, student));
       const filename = `Invoice-${safeFilename(parentName)}-${shortId(payment.id)}.pdf`;
       const fd = new FormData();
       fd.append('pdf', blob, filename);
@@ -440,8 +439,7 @@ const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => 
         <div className="p-5 sm:p-8 font-sans text-ink">
           <div className="flex justify-between items-start mb-8 sm:mb-10 pb-5 border-b-2 border-sage-500">
             <div>
-              <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
-              <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
+              <p className="text-lg sm:text-xl font-bold text-sage-600">{operator?.business_name || 'ShuleRyde'}</p>
               <p className="text-sm text-slate">{operator?.phone}</p>
             </div>
             <div className="text-right">
@@ -478,7 +476,7 @@ const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => 
             <tbody>
               <tr className="border-b border-cloud">
                 <td className="px-4 py-4">
-                  <p className="font-medium text-ink">School Transport Fee</p>
+                  <p className="font-medium text-ink">{student || 'School Transport'}</p>
                   <p className="text-xs text-slate mt-0.5">{monthLabel(payment.invoice_month)}</p>
                 </td>
                 <td className="px-4 py-4 text-right font-medium">{fmt(payment.amount)}</td>
@@ -505,7 +503,7 @@ const InvoiceModal = ({ payment, operator, onClose, showToast, parentData }) => 
               <p className="text-sm text-green-800">Account: <strong>{shortId(payment.id)}</strong></p>
             </div>
           )}
-          <p className="text-xs text-slate text-center mt-6">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
+          <p className="text-xs text-slate text-center mt-6">{operator?.business_name || 'ShuleRyde'}</p>
         </div>
       </div>
     </div>
@@ -520,7 +518,7 @@ const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => 
   const student = studentName(payment, parentData);
   const parentName = payment.parents?.full_name || '';
   const docTitle = `Receipt - ${parentName} - ${shortId(payment.id)}`;
-  const handlePrint = () => printDoc(buildReceiptDoc(payment, operator), docTitle);
+  const handlePrint = () => printDoc(buildReceiptDoc(payment, operator, student), docTitle);
   const datePaid = installment?.paid_at
     ? new Date(installment.paid_at).toLocaleDateString('en-KE')
     : payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('en-KE') : '';
@@ -544,7 +542,7 @@ const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => 
     setWaSending(true);
     showToast?.('Generating PDF...');
     try {
-      const blob = await generatePdfBlob(buildReceiptDoc(payment, operator));
+      const blob = await generatePdfBlob(buildReceiptDoc(payment, operator, student));
       const filename = `Receipt-${safeFilename(parentName)}-${shortId(payment.id)}.pdf`;
       const fd = new FormData();
       fd.append('pdf', blob, filename);
@@ -586,8 +584,7 @@ const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => 
         <div className="p-5 sm:p-8 font-sans text-ink">
           <div className="flex justify-between items-start mb-8 sm:mb-10 pb-5 border-b-2 border-sage-500">
             <div>
-              <p className="text-lg sm:text-xl font-bold text-sage-600">ShuleRyde</p>
-              <p className="text-sm text-slate mt-0.5">{operator?.business_name}</p>
+              <p className="text-lg sm:text-xl font-bold text-sage-600">{operator?.business_name || 'ShuleRyde'}</p>
               <p className="text-sm text-slate">{operator?.phone}</p>
             </div>
             <div className="text-right">
@@ -628,7 +625,7 @@ const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => 
             <tbody>
               <tr className="border-b border-cloud">
                 <td className="px-4 py-4">
-                  <p className="font-medium text-ink">School Transport Fee</p>
+                  <p className="font-medium text-ink">{student || 'School Transport'}</p>
                   <p className="text-xs text-slate mt-0.5">{monthLabel(payment.invoice_month)}</p>
                   {payment.status === 'PARTIALLY_PAID' && (
                     <p className="text-xs text-blue-600 mt-0.5">Latest installment — Total due: {fmt(payment.amount)}</p>
@@ -652,7 +649,7 @@ const ReceiptModal = ({ payment, operator, onClose, showToast, parentData }) => 
                 : `This receipt confirms full payment for ${monthLabel(payment.invoice_month)}.`}
             </p>
           </div>
-          <p className="text-xs text-slate text-center mt-4">Thank you for trusting ShuleRyde with your child's transport. — {operator?.business_name}</p>
+          <p className="text-xs text-slate text-center mt-4">{operator?.business_name || 'ShuleRyde'}</p>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import SignUp from './pages/SignUp';
 import LandingPage from './pages/LandingPage';
 import Payments from './pages/Payments';
 import Schools from './pages/Schools';
+import Manifest from './pages/Manifest';
 import AdminSignIn from './pages/AdminSignIn';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOperatorDetail from './pages/AdminOperatorDetail';
@@ -31,6 +32,14 @@ const ProtectedRoute = ({ children }) => {
   const { operator, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!operator) return <Navigate to="/signin" replace />;
+  return children;
+};
+
+const PermissionRoute = ({ permission, children }) => {
+  const { operator } = useAuth();
+  if (operator?.permissions?.[permission] === false) {
+    return <Navigate to="/dashboard" replace />;
+  }
   return children;
 };
 
@@ -56,12 +65,13 @@ const AppRoutes = () => {
         element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}
       >
         <Route index element={<Dashboard />} />
-        <Route path="vehicles" element={<Vehicles />} />
-        <Route path="parents" element={<Parents />} />
-        <Route path="schools" element={<Schools />} />
-        <Route path="payments" element={<Payments />} />
-        <Route path="compliance" element={<Compliance />} />
-        <Route path="finance" element={<Finance />} />
+        <Route path="vehicles" element={<PermissionRoute permission="vehicles"><Vehicles /></PermissionRoute>} />
+        <Route path="parents" element={<PermissionRoute permission="parents"><Parents /></PermissionRoute>} />
+        <Route path="schools" element={<PermissionRoute permission="parents"><Schools /></PermissionRoute>} />
+        <Route path="manifest" element={<PermissionRoute permission="parents"><Manifest /></PermissionRoute>} />
+        <Route path="payments" element={<PermissionRoute permission="parents"><Payments /></PermissionRoute>} />
+        <Route path="compliance" element={<PermissionRoute permission="compliance"><Compliance /></PermissionRoute>} />
+        <Route path="finance" element={<PermissionRoute permission="finance"><Finance /></PermissionRoute>} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

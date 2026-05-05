@@ -100,6 +100,12 @@ export const financeAPI = {
   getFinancialSummary: (month) => api.get('/finance/summary', { params: month ? { month } : {} }),
 };
 
+export const whatsappAPI = {
+  sendDocument: (formData) => api.post('/whatsapp/send', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+};
+
 const adminApi = axios.create({ baseURL: API_URL });
 
 adminApi.interceptors.request.use((config) => {

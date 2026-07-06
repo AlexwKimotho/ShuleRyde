@@ -1,10 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+
+app.use(compression());
 
 // Middleware
 app.use(cors({
@@ -13,6 +17,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: { error: 'Too many attempts, please try again later.' }, standardHeaders: true, legacyHeaders: false });
+app.use('/api/auth/signin', authLimiter);
+app.use('/api/auth/signup', authLimiter);
 
 // Routes
 app.use('/api/admin', require('./routes/admin'));

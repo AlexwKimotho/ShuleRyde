@@ -31,15 +31,15 @@ const updateSchool = async (req, res, next) => {
     const { id } = req.params;
     const { name, location } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'School name is required' });
-    const { data: existing } = await supabase.from('schools').select('id').eq('id', id).eq('operator_id', req.operator.id).single();
-    if (!existing) return res.status(404).json({ error: 'School not found' });
     const { data: school, error } = await supabase
       .from('schools')
       .update({ name: name.trim(), location: location?.trim() || null })
       .eq('id', id)
+      .eq('operator_id', req.operator.id)
       .select()
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!school) return res.status(404).json({ error: 'School not found' });
     res.json({ school });
   } catch (err) { next(err); }
 };
@@ -47,10 +47,15 @@ const updateSchool = async (req, res, next) => {
 const deleteSchool = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data: existing } = await supabase.from('schools').select('id').eq('id', id).eq('operator_id', req.operator.id).single();
-    if (!existing) return res.status(404).json({ error: 'School not found' });
-    const { error } = await supabase.from('schools').delete().eq('id', id);
+    const { data: deleted, error } = await supabase
+      .from('schools')
+      .delete()
+      .eq('id', id)
+      .eq('operator_id', req.operator.id)
+      .select('id')
+      .maybeSingle();
     if (error) throw error;
+    if (!deleted) return res.status(404).json({ error: 'School not found' });
     res.json({ message: 'School deleted' });
   } catch (err) { next(err); }
 };

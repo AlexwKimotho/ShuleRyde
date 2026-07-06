@@ -1,4 +1,3 @@
-import html2pdf from 'html2pdf.js';
 import { useEffect, useMemo, useState } from 'react';
 import { paymentsAPI, parentsAPI, schoolsAPI, whatsappAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -106,7 +105,8 @@ const printDoc = (bodyHtml, title = 'ShuleRyde Document') => {
   setTimeout(() => win.print(), 500);
 };
 
-const generatePdfBlob = (bodyHtml) => {
+const generatePdfBlob = async (bodyHtml) => {
+  const html2pdf = (await import('html2pdf.js')).default;
   const wrapper = document.createElement('div');
   wrapper.style.cssText = `position:fixed;left:-9999px;top:0;width:794px;background:#ffffff;padding:48px 40px;box-sizing:border-box;${FONT}`;
   wrapper.innerHTML = bodyHtml;

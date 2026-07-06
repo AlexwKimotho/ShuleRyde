@@ -51,18 +51,16 @@ const updateParent = async (req, res, next) => {
     const { id } = req.params;
     const { full_name, phone, email } = req.body;
 
-    const { data: existing } = await supabase
-      .from('parents').select('id').eq('id', id).eq('operator_id', req.operator.id).single();
-    if (!existing) return res.status(404).json({ error: 'Parent not found' });
-
     const { data: parent, error } = await supabase
       .from('parents')
       .update({ full_name, phone, email: email || null })
       .eq('id', id)
+      .eq('operator_id', req.operator.id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!parent) return res.status(404).json({ error: 'Parent not found' });
     res.json({ parent });
   } catch (err) {
     next(err);
@@ -72,12 +70,15 @@ const updateParent = async (req, res, next) => {
 const deleteParent = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data: existing } = await supabase
-      .from('parents').select('id').eq('id', id).eq('operator_id', req.operator.id).single();
-    if (!existing) return res.status(404).json({ error: 'Parent not found' });
-
-    const { error } = await supabase.from('parents').delete().eq('id', id);
+    const { data: deleted, error } = await supabase
+      .from('parents')
+      .delete()
+      .eq('id', id)
+      .eq('operator_id', req.operator.id)
+      .select('id')
+      .maybeSingle();
     if (error) throw error;
+    if (!deleted) return res.status(404).json({ error: 'Parent not found' });
     res.json({ message: 'Parent deleted' });
   } catch (err) {
     next(err);

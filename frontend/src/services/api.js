@@ -89,6 +89,7 @@ export const schoolsAPI = {
 };
 
 export const financeAPI = {
+  getAll: (year) => api.get('/finance/all', { params: { year } }),
   getBalanceSheet: () => api.get('/finance/balance-sheet'),
   getProfitAndLoss: (year) => api.get('/finance/profit-loss', { params: { year } }),
   getFinancialSummary: () => api.get('/finance/summary'),

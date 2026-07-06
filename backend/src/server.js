@@ -1,14 +1,15 @@
 const express = require('express');
 const cors = require('cors');
-const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+// Note: compression@1.x is not compatible with Express 5 — omitted intentionally
 require('dotenv').config();
 
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-app.use(compression());
+// Trust Render's load balancer so req.ip is the client IP, not the proxy
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
@@ -18,7 +19,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: { error: 'Too many attempts, please try again later.' }, standardHeaders: true, legacyHeaders: false });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: 'Too many attempts, please try again later.', standardHeaders: 'draft-7', legacyHeaders: false });
 app.use('/api/auth/signin', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 

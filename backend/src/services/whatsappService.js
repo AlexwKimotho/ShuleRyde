@@ -2,13 +2,21 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 const BASE_URL = `https://graph.facebook.com/v20.0`;
 
+const TIMEOUT_MS = 15_000;
+
+const fetchWithTimeout = (url, options) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+};
+
 async function uploadMedia(buffer, filename) {
   const formData = new FormData();
   formData.append('file', new Blob([buffer], { type: 'application/pdf' }), filename);
   formData.append('type', 'application/pdf');
   formData.append('messaging_product', 'whatsapp');
 
-  const res = await fetch(`${BASE_URL}/${PHONE_NUMBER_ID}/media`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/${PHONE_NUMBER_ID}/media`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
     body: formData,
@@ -23,7 +31,7 @@ async function uploadMedia(buffer, filename) {
 }
 
 async function sendDocument(toPhone, mediaId, caption, filename) {
-  const res = await fetch(`${BASE_URL}/${PHONE_NUMBER_ID}/messages`, {
+  const res = await fetchWithTimeout(`${BASE_URL}/${PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${ACCESS_TOKEN}`,

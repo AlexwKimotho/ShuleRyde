@@ -62,18 +62,16 @@ const updateExpense = async (req, res, next) => {
     const { id } = req.params;
     const { category, amount, description, expense_date, vehicle_id, notes } = req.body;
 
-    const { data: existing } = await supabase
-      .from('expenses').select('id').eq('id', id).eq('operator_id', req.operator.id).single();
-    if (!existing) return res.status(404).json({ error: 'Expense not found' });
-
     const { data: expense, error } = await supabase
       .from('expenses')
       .update({ category, amount, description, expense_date, vehicle_id: vehicle_id || null, notes: notes || null })
       .eq('id', id)
+      .eq('operator_id', req.operator.id)
       .select('*, vehicles(id, license_plate, model)')
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!expense) return res.status(404).json({ error: 'Expense not found' });
     res.json({ expense });
   } catch (err) {
     next(err);
@@ -83,12 +81,15 @@ const updateExpense = async (req, res, next) => {
 const deleteExpense = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data: existing } = await supabase
-      .from('expenses').select('id').eq('id', id).eq('operator_id', req.operator.id).single();
-    if (!existing) return res.status(404).json({ error: 'Expense not found' });
-
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    const { data: deleted, error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id)
+      .eq('operator_id', req.operator.id)
+      .select('id')
+      .maybeSingle();
     if (error) throw error;
+    if (!deleted) return res.status(404).json({ error: 'Expense not found' });
     res.json({ message: 'Expense deleted' });
   } catch (err) {
     next(err);

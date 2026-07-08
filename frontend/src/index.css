@@ -1,44 +1,126 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-sage-50: #f0f5f3;
-  --color-sage-100: #d9e7df;
+  /* ── Brand — Sage ──────────────────────────────────── */
+  --color-sage-50:  #EDFAF6;
+  --color-sage-100: #C9EDE2;
+  --color-sage-200: #9DD9C5;
+  --color-sage-300: #6CC4A6;
   --color-sage-500: #6B9080;
-  --color-sage-700: #5A7A6A;
-  --color-sage-900: #4A6459;
+  --color-sage-600: #5A7A6C;
+  --color-sage-700: #4A6459;
+  --color-sage-900: #2A3D35;
 
-  --color-terracotta-50: #fef3f1;
-  --color-terracotta-100: #fde2dd;
+  /* ── Brand — Terracotta ─────────────────────────────── */
+  --color-terracotta-50:  #FEF3F1;
+  --color-terracotta-100: #FCE0DA;
   --color-terracotta-500: #E07A5F;
   --color-terracotta-700: #C96850;
   --color-terracotta-900: #B45641;
 
-  --color-paper: #F8F6F1;
-  --color-cloud: #EAE7DC;
-  --color-border: #D8D5CB;
-  --color-slate: #5A6C7D;
-  --color-ink: #2C3E50;
-  --color-success: #52B788;
-  --color-warning: #F4A261;
-  --color-error: #E76F51;
+  /* ── Surfaces — Apple-inspired neutrals ─────────────── */
+  --color-paper:  #F5F5F7;
+  --color-cloud:  #E8E8ED;
+  --color-border: #D1D1D6;
 
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui;
+  /* ── Text ────────────────────────────────────────────── */
+  --color-slate: #6E6E73;
+  --color-ink:   #1D1D1F;
+
+  /* ── Status ──────────────────────────────────────────── */
+  --color-success: #30B57A;
+  --color-warning: #F59E0B;
+  --color-error:   #EF4444;
+
+  /* ── Typography ──────────────────────────────────────── */
+  --font-sans:    'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
 }
 
-* {
-  box-sizing: border-box;
-}
+/* ── Reset ───────────────────────────────────────────────── */
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background-color: #F8F6F1;
-  font-family: 'IBM Plex Sans', ui-sans-serif, system-ui;
-  color: #2C3E50;
+  background-color: var(--color-paper);
+  font-family: var(--font-sans);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv01' 1, 'ss01' 1;
+  letter-spacing: -0.01em;
 }
 
-#root {
-  min-height: 100svh;
+#root { min-height: 100svh; }
+
+/* ── Scrollbars ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+
+/* ── Animations ──────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+/* ── Utility classes ─────────────────────────────────────── */
+.animate-fade-in  { animation: fade-in  0.25s cubic-bezier(0.4,0,0.2,1) both; }
+.animate-slide-up { animation: slide-up 0.30s cubic-bezier(0.4,0,0.2,1) both; }
+.animate-scale-in { animation: scale-in 0.20s cubic-bezier(0.4,0,0.2,1) both; }
+
+/* Glass morphism — applied to frosted surfaces */
+.glass {
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: saturate(1.8) blur(24px);
+  -webkit-backdrop-filter: saturate(1.8) blur(24px);
+}
+
+/* Card — richer shadow than Tailwind default */
+.card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.04),
+    0 2px 4px rgba(0,0,0,0.04),
+    0 8px 24px rgba(0,0,0,0.06);
+}
+
+.card:hover {
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.04),
+    0 4px 8px rgba(0,0,0,0.06),
+    0 16px 40px rgba(0,0,0,0.08);
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg,
+    #f0f0f2 25%,
+    #e8e8ed 50%,
+    #f0f0f2 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
 }

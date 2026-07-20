@@ -25,6 +25,8 @@ export const authAPI = {
   signup: (data) => api.post('/auth/signup', data),
   signin: (data) => api.post('/auth/signin', data),
   getMe: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (access_token, password) => api.post('/auth/reset-password', { access_token, password }),
 };
 
 export const vehiclesAPI = {
@@ -36,6 +38,7 @@ export const vehiclesAPI = {
 
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
+  getActivity: (limit = 50, offset = 0) => api.get('/dashboard/activity', { params: { limit, offset } }),
 };
 
 export const parentsAPI = {
@@ -93,6 +96,19 @@ export const financeAPI = {
   getBalanceSheet: () => api.get('/finance/balance-sheet'),
   getProfitAndLoss: (year) => api.get('/finance/profit-loss', { params: { year } }),
   getFinancialSummary: () => api.get('/finance/summary'),
+};
+
+export const manifestsAPI = {
+  getToday: (date) => api.get('/manifests', { params: date ? { date } : {} }),
+  checkIn: (student_id, notes) => api.post('/manifests/checkin', { student_id, notes }),
+  undoCheckIn: (studentId) => api.delete(`/manifests/checkin/${studentId}`),
+};
+
+export const driversAPI = {
+  getAll: () => api.get('/drivers'),
+  create: (data) => api.post('/drivers', data),
+  update: (id, data) => api.put(`/drivers/${id}`, data),
+  delete: (id) => api.delete(`/drivers/${id}`),
 };
 
 export const whatsappAPI = {

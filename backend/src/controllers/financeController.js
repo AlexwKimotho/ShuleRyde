@@ -52,29 +52,32 @@ const getProfitAndLoss = async (req, res, next) => {
   try {
     const operatorId = req.operator.id;
     const { year } = req.query;
+    const targetYear = year || new Date().getFullYear().toString();
 
     const { data: parents } = await supabase.from('parents').select('id').eq('operator_id', operatorId);
     const parentIds = (parents || []).map((p) => p.id);
 
-    if (!parentIds.length) {
-      return res.json(pnlZeroed());
-    }
+    const [paymentsResult, expensesResult] = await Promise.all([
+      parentIds.length
+        ? supabase.from('payments').select('amount, status, invoice_month, amount_collected').in('parent_id', parentIds)
+        : { data: [] },
+      supabase.from('expenses')
+        .select('amount, expense_date, category')
+        .eq('operator_id', operatorId)
+        .gte('expense_date', `${targetYear}-01-01`)
+        .lte('expense_date', `${targetYear}-12-31`),
+    ]);
 
-    const { data: payments, error } = await supabase
-      .from('payments')
-      .select('amount, status, invoice_month, amount_collected')
-      .in('parent_id', parentIds);
-
-    if (error) throw error;
+    if (paymentsResult.error) throw paymentsResult.error;
 
     let totalRevenue = 0;
     let totalCollected = 0;
-    let monthlyData = {};
+    const monthlyData = {};
 
-    for (const p of payments || []) {
-      if (year && !p.invoice_month.startsWith(year)) continue;
+    for (const p of paymentsResult.data || []) {
+      if (!p.invoice_month.startsWith(targetYear)) continue;
       const m = p.invoice_month;
-      if (!monthlyData[m]) monthlyData[m] = { month: m, revenue: 0, collected: 0 };
+      if (!monthlyData[m]) monthlyData[m] = { month: m, revenue: 0, collected: 0, expenses: 0 };
       const amt = parseFloat(p.amount);
       const collected = parseFloat(p.amount_collected || 0);
       monthlyData[m].revenue += amt;
@@ -83,19 +86,24 @@ const getProfitAndLoss = async (req, res, next) => {
       totalCollected += p.status === 'PAID' ? amt : collected;
     }
 
-    // Estimated expenses (typically 20-30% of revenue for transport business)
-    const estimatedExpenses = totalRevenue * 0.25;
-    const grossProfit = totalRevenue - estimatedExpenses;
-    const netProfit = grossProfit;
+    // Sum actual expenses per month
+    let totalExpenses = 0;
+    for (const e of expensesResult.data || []) {
+      const month = e.expense_date.slice(0, 7); // YYYY-MM
+      if (monthlyData[month]) monthlyData[month].expenses += parseFloat(e.amount);
+      totalExpenses += parseFloat(e.amount);
+    }
+
+    const grossProfit = totalRevenue - totalExpenses;
 
     res.json({
       totalRevenue: parseFloat(totalRevenue.toFixed(2)),
       totalCollected: parseFloat(totalCollected.toFixed(2)),
-      estimatedExpenses: parseFloat(estimatedExpenses.toFixed(2)),
+      totalExpenses: parseFloat(totalExpenses.toFixed(2)),
       grossProfit: parseFloat(grossProfit.toFixed(2)),
       operatingIncome: parseFloat(grossProfit.toFixed(2)),
-      netProfit: parseFloat(netProfit.toFixed(2)),
-      profitMargin: totalRevenue > 0 ? parseFloat(((netProfit / totalRevenue) * 100).toFixed(2)) : 0,
+      netProfit: parseFloat(grossProfit.toFixed(2)),
+      profitMargin: totalRevenue > 0 ? parseFloat(((grossProfit / totalRevenue) * 100).toFixed(2)) : 0,
       collectionRate: totalRevenue > 0 ? parseFloat(((totalCollected / totalRevenue) * 100).toFixed(2)) : 0,
       monthly: Object.values(monthlyData).sort((a, b) => b.month.localeCompare(a.month)),
     });
@@ -174,17 +182,6 @@ const getFinancialSummary = async (req, res, next) => {
 };
 
 const zeroed = () => ({ total_invoiced: 0, total_collected: 0, total_pending: 0, collection_rate: '0.0' });
-const pnlZeroed = () => ({
-  totalRevenue: 0,
-  totalCollected: 0,
-  estimatedExpenses: 0,
-  grossProfit: 0,
-  operatingIncome: 0,
-  netProfit: 0,
-  profitMargin: 0,
-  collectionRate: 0,
-  monthly: [],
-});
 const financialSummaryZeroed = () => ({
   assets: 0,
   liabilities: 0,
@@ -196,11 +193,18 @@ const financialSummaryZeroed = () => ({
   collectionRate: 0,
 });
 
-// Combined endpoint — fetches parent IDs once, runs all 3 computations in parallel
+const pnlZeroed = () => ({
+  totalRevenue: 0, totalCollected: 0, totalExpenses: 0,
+  grossProfit: 0, operatingIncome: 0, netProfit: 0,
+  profitMargin: 0, collectionRate: 0, monthly: [],
+});
+
+// Combined endpoint — fetches parent IDs once, runs all computations in parallel
 const getAll = async (req, res, next) => {
   try {
     const operatorId = req.operator.id;
     const { year } = req.query;
+    const targetYear = year || new Date().getFullYear().toString();
 
     const { data: parents } = await supabase.from('parents').select('id').eq('operator_id', operatorId);
     const parentIds = (parents || []).map((p) => p.id);
@@ -213,11 +217,14 @@ const getAll = async (req, res, next) => {
       });
     }
 
-    const [bsPayments, pnlPayments, sumPayments] = await Promise.all([
+    const [bsPayments, sumPayments, expensesResult] = await Promise.all([
       supabase.from('payments').select('amount, status, invoice_month, payment_date, amount_collected').in('parent_id', parentIds),
-      supabase.from('payments').select('amount, status, invoice_month, amount_collected').in('parent_id', parentIds),
       supabase.from('payments').select('amount, status, amount_collected').in('parent_id', parentIds),
+      supabase.from('expenses').select('amount, expense_date').eq('operator_id', operatorId)
+        .gte('expense_date', `${targetYear}-01-01`).lte('expense_date', `${targetYear}-12-31`),
     ]);
+    // pnlPayments reuses bsPayments data
+    const pnlPayments = bsPayments;
 
     // Balance sheet monthly breakdown
     const monthMap = {};
@@ -241,9 +248,9 @@ const getAll = async (req, res, next) => {
     let pnlRevenue = 0, pnlCollected = 0;
     const pnlMonthly = {};
     for (const p of pnlPayments.data || []) {
-      if (year && !p.invoice_month.startsWith(year)) continue;
+      if (!p.invoice_month.startsWith(targetYear)) continue;
       const m = p.invoice_month;
-      if (!pnlMonthly[m]) pnlMonthly[m] = { month: m, revenue: 0, collected: 0 };
+      if (!pnlMonthly[m]) pnlMonthly[m] = { month: m, revenue: 0, collected: 0, expenses: 0 };
       const amt = parseFloat(p.amount);
       const col = parseFloat(p.amount_collected || 0);
       pnlMonthly[m].revenue += amt;
@@ -251,8 +258,13 @@ const getAll = async (req, res, next) => {
       pnlRevenue += amt;
       pnlCollected += p.status === 'PAID' ? amt : col;
     }
-    const estimatedExpenses = pnlRevenue * 0.25;
-    const netProfit = pnlRevenue - estimatedExpenses;
+    let totalExpenses = 0;
+    for (const e of expensesResult.data || []) {
+      const month = e.expense_date.slice(0, 7);
+      if (pnlMonthly[month]) pnlMonthly[month].expenses += parseFloat(e.amount);
+      totalExpenses += parseFloat(e.amount);
+    }
+    const netProfit = pnlRevenue - totalExpenses;
 
     // Summary
     let sInvoiced = 0, sCollected = 0, sPartial = 0, sPending = 0;
@@ -274,7 +286,7 @@ const getAll = async (req, res, next) => {
       pnl: {
         totalRevenue: parseFloat(pnlRevenue.toFixed(2)),
         totalCollected: parseFloat(pnlCollected.toFixed(2)),
-        estimatedExpenses: parseFloat(estimatedExpenses.toFixed(2)),
+        totalExpenses: parseFloat(totalExpenses.toFixed(2)),
         grossProfit: parseFloat(netProfit.toFixed(2)),
         operatingIncome: parseFloat(netProfit.toFixed(2)),
         netProfit: parseFloat(netProfit.toFixed(2)),

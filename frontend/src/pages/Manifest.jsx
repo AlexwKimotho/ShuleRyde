@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { parentsAPI, vehiclesAPI, schoolsAPI } from '../services/api';
+import { parentsAPI, vehiclesAPI, schoolsAPI, manifestsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
 
@@ -130,14 +130,19 @@ const Manifest = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [{ data: pd }, { data: vd }, { data: sd }] = await Promise.all([
+        const [{ data: pd }, { data: vd }, { data: sd }, manifestRes] = await Promise.all([
           parentsAPI.getAll(),
           vehiclesAPI.getAll(),
           schoolsAPI.getAll(),
+          manifestsAPI.getToday().catch(() => null),
         ]);
         setParents(pd.parents || []);
         setVehicles(vd.vehicles || []);
         setSchools(sd.schools || []);
+        if (manifestRes?.data?.checkIns) {
+          // Merge DB check-ins over localStorage (DB is authoritative)
+          setCheckIns({ ...readLS(CHECKIN_KEY()), ...manifestRes.data.checkIns });
+        }
       } catch {}
       finally { setLoading(false); }
     };
@@ -188,17 +193,32 @@ const Manifest = () => {
     return Array.from(map.values());
   }, [filtered, groupBy, vehicles, schools]);
 
-  const markArrived = (childId) => {
-    const next = { ...checkIns, [childId]: { arrived: true, time: nowTime() } };
+  const markArrived = async (childId) => {
+    const time = nowTime();
+    // Optimistic update
+    const next = { ...checkIns, [childId]: { arrived: true, time } };
     setCheckIns(next);
     writeLS(CHECKIN_KEY(), next);
+    try {
+      await manifestsAPI.checkIn(childId);
+    } catch {
+      // Revert on failure
+      setCheckIns((prev) => { const r = { ...prev }; delete r[childId]; return r; });
+    }
   };
 
-  const undoArrived = (childId) => {
+  const undoArrived = async (childId) => {
+    const prev = { ...checkIns };
     const next = { ...checkIns };
     delete next[childId];
     setCheckIns(next);
     writeLS(CHECKIN_KEY(), next);
+    try {
+      await manifestsAPI.undoCheckIn(childId);
+    } catch {
+      // Revert on failure
+      setCheckIns(prev);
+    }
   };
 
   const handleNotified = (parentId, childIds) => {

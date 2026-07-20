@@ -56,4 +56,25 @@ router.get('/stats', async (req, res, next) => {
   }
 });
 
+// GET /api/dashboard/activity?limit=50&offset=0
+router.get('/activity', async (req, res, next) => {
+  try {
+    const operatorId = req.operator.id;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const offset = parseInt(req.query.offset) || 0;
+
+    const { data, error, count } = await supabase
+      .from('activity_logs')
+      .select('*', { count: 'exact' })
+      .eq('operator_id', operatorId)
+      .order('timestamp', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+    res.json({ activity: data || [], total: count || 0, limit, offset });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

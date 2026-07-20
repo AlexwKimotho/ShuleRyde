@@ -18,30 +18,22 @@ const monthLabel = (m) => {
   return new Date(y, mo - 1).toLocaleDateString('en-KE', { month: 'long', year: 'numeric' });
 };
 
+const Spinner = () => (
+  <div className="flex justify-center py-20">
+    <svg className="animate-spin h-8 w-8 text-sage-500" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
+  </div>
+);
+
 // ── P&L Statement Tab ──────────────────────────────────────────
-const ProfitLossTab = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [year, setYear] = useState(new Date().getFullYear().toString());
-
-  useEffect(() => {
-    setLoading(true);
-    financeAPI.getProfitAndLoss(year)
-      .then(({ data: d }) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [year]);
-
-  if (loading) return <div className="flex justify-center py-20"><svg className="animate-spin h-8 w-8 text-sage-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
+const ProfitLossTab = ({ data, loading }) => {
+  if (loading) return <Spinner />;
+  if (!data) return null;
 
   return (
     <>
-      <div className="flex justify-end mb-6">
-        <select value={year} onChange={(e) => setYear(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
-          {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </div>
       <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden mb-6">
         <div className="px-4 sm:px-5 py-4 border-b border-cloud bg-paper">
           <h2 className="font-semibold text-ink">Profit & Loss Statement</h2>
@@ -49,21 +41,19 @@ const ProfitLossTab = () => {
         <div className="p-5">
           <table className="w-full">
             <tbody className="divide-y divide-cloud text-sm">
-              <tr><td className="py-3 font-medium text-ink">Revenue</td><td className="py-3 text-right text-green-600 font-semibold">{fmt(data?.totalRevenue || 0)}</td></tr>
-              <tr><td className="py-3 font-medium text-ink">Collection</td><td className="py-3 text-right text-green-600">{fmt(data?.totalCollected || 0)}</td></tr>
-              <tr className="bg-paper"><td className="py-3 font-semibold text-ink">Gross Expenses (est. 25%)</td><td className="py-3 text-right text-red-600 font-semibold">{fmt(data?.estimatedExpenses || 0)}</td></tr>
-              <tr className="bg-paper"><td className="py-3 font-semibold text-ink">Gross Profit</td><td className="py-3 text-right text-ink font-semibold">{fmt(data?.grossProfit || 0)}</td></tr>
-              <tr><td className="py-3 text-slate">Operating Expenses</td><td className="py-3 text-right text-slate">—</td></tr>
-              <tr className="bg-green-50 border-t-2 border-green-200"><td className="py-3 font-bold text-green-900">Net Profit</td><td className="py-3 text-right font-bold text-green-700 text-lg">{fmt(data?.netProfit || 0)}</td></tr>
+              <tr><td className="py-3 font-medium text-ink">Total Revenue</td><td className="py-3 text-right text-green-600 font-semibold">{fmt(data.totalRevenue || 0)}</td></tr>
+              <tr><td className="py-3 font-medium text-ink">Amount Collected</td><td className="py-3 text-right text-green-600">{fmt(data.totalCollected || 0)}</td></tr>
+              <tr className="bg-paper"><td className="py-3 font-semibold text-ink">Total Expenses (actual)</td><td className="py-3 text-right text-red-600 font-semibold">{fmt(data.totalExpenses || 0)}</td></tr>
+              <tr className="bg-green-50 border-t-2 border-green-200"><td className="py-3 font-bold text-green-900">Net Profit</td><td className="py-3 text-right font-bold text-green-700 text-lg">{fmt(data.netProfit || 0)}</td></tr>
             </tbody>
           </table>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-cloud p-4"><p className="text-xs text-slate uppercase tracking-wide mb-1">Profit Margin</p><p className="text-2xl font-semibold text-ink">{data?.profitMargin || 0}%</p></div>
-        <div className="bg-white rounded-xl border border-cloud p-4"><p className="text-xs text-slate uppercase tracking-wide mb-1">Collection Rate</p><p className="text-2xl font-semibold text-green-600">{data?.collectionRate || 0}%</p></div>
+        <div className="bg-white rounded-xl border border-cloud p-4"><p className="text-xs text-slate uppercase tracking-wide mb-1">Profit Margin</p><p className="text-2xl font-semibold text-ink">{data.profitMargin || 0}%</p></div>
+        <div className="bg-white rounded-xl border border-cloud p-4"><p className="text-xs text-slate uppercase tracking-wide mb-1">Collection Rate</p><p className="text-2xl font-semibold text-green-600">{data.collectionRate || 0}%</p></div>
       </div>
-      {data?.monthly?.length > 0 && (
+      {data.monthly?.length > 0 && (
         <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
           <div className="px-4 sm:px-5 py-4 border-b border-cloud bg-paper"><h2 className="font-semibold text-ink">Monthly Breakdown</h2></div>
           <div className="overflow-x-auto">
@@ -72,19 +62,18 @@ const ProfitLossTab = () => {
                 <th className="px-4 py-3 text-left font-medium text-slate">Month</th>
                 <th className="px-4 py-3 text-right font-medium text-slate">Revenue</th>
                 <th className="px-4 py-3 text-right font-medium text-slate">Collected</th>
-                <th className="px-4 py-3 text-right font-medium text-slate">Expenses (25%)</th>
+                <th className="px-4 py-3 text-right font-medium text-slate">Expenses</th>
                 <th className="px-4 py-3 text-right font-medium text-slate">Net Profit</th>
               </tr></thead>
               <tbody className="divide-y divide-cloud">
                 {data.monthly.map((m) => {
-                  const expenses = m.revenue * 0.25;
-                  const profit = m.revenue - expenses;
+                  const profit = m.revenue - (m.expenses || 0);
                   return (
                     <tr key={m.month} className="hover:bg-paper transition-colors">
                       <td className="px-4 py-3 font-medium text-ink">{monthLabel(m.month)}</td>
                       <td className="px-4 py-3 text-right text-green-600">{fmt(m.revenue)}</td>
                       <td className="px-4 py-3 text-right text-green-700">{fmt(m.collected)}</td>
-                      <td className="px-4 py-3 text-right text-red-600">{fmt(expenses)}</td>
+                      <td className="px-4 py-3 text-right text-red-600">{fmt(m.expenses || 0)}</td>
                       <td className="px-4 py-3 text-right font-semibold text-ink">{fmt(profit)}</td>
                     </tr>
                   );
@@ -99,18 +88,9 @@ const ProfitLossTab = () => {
 };
 
 // ── Balance Sheet Tab ──────────────────────────────────────────
-const BalanceSheetTab = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    financeAPI.getFinancialSummary()
-      .then(({ data: d }) => setData(d))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <div className="flex justify-center py-20"><svg className="animate-spin h-8 w-8 text-sage-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
+const BalanceSheetTab = ({ data, loading }) => {
+  if (loading) return <Spinner />;
+  if (!data) return null;
 
   return (
     <>
@@ -118,35 +98,35 @@ const BalanceSheetTab = () => {
         <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-paper border-b border-cloud"><h2 className="font-semibold text-ink">Assets</h2></div>
           <div className="p-5">
-            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Cash Collected</p><p className="font-semibold text-ink">{fmt(data?.totalCollected || 0)}</p></div>
-            <div className="flex items-center justify-between py-4 bg-green-50 rounded px-3 mt-3"><p className="font-bold text-green-900">Total Assets</p><p className="font-bold text-green-700 text-lg">{fmt(data?.assets || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Cash Collected</p><p className="font-semibold text-ink">{fmt(data.totalCollected || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 bg-green-50 rounded px-3 mt-3"><p className="font-bold text-green-900">Total Assets</p><p className="font-bold text-green-700 text-lg">{fmt(data.assets || 0)}</p></div>
           </div>
         </div>
         <div className="bg-white rounded-xl border border-cloud shadow-sm overflow-hidden">
           <div className="px-5 py-4 bg-paper border-b border-cloud"><h2 className="font-semibold text-ink">Liabilities & Equity</h2></div>
           <div className="p-5">
-            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Accounts Payable</p><p className="font-semibold text-red-600">{fmt(data?.liabilities || 0)}</p></div>
-            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Owner's Equity</p><p className="font-semibold text-ink">{fmt(data?.equity || 0)}</p></div>
-            <div className="flex items-center justify-between py-4 bg-blue-50 rounded px-3 mt-3"><p className="font-bold text-blue-900">Total L & E</p><p className="font-bold text-blue-700 text-lg">{fmt((data?.liabilities || 0) + (data?.equity || 0))}</p></div>
+            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Accounts Payable</p><p className="font-semibold text-red-600">{fmt(data.liabilities || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 border-b border-cloud"><p className="text-slate">Owner's Equity</p><p className="font-semibold text-ink">{fmt(data.equity || 0)}</p></div>
+            <div className="flex items-center justify-between py-4 bg-blue-50 rounded px-3 mt-3"><p className="font-bold text-blue-900">Total L & E</p><p className="font-bold text-blue-700 text-lg">{fmt((data.liabilities || 0) + (data.equity || 0))}</p></div>
           </div>
         </div>
       </div>
       <div className="mt-6 bg-white rounded-xl border border-cloud shadow-sm p-5">
         <h3 className="font-semibold text-ink mb-4">Summary</h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div><p className="text-slate">Total Invoiced</p><p className="font-semibold text-ink">{fmt(data?.totalInvoiced || 0)}</p></div>
-          <div><p className="text-slate">Total Collected</p><p className="font-semibold text-green-600">{fmt(data?.totalCollected || 0)}</p></div>
-          <div><p className="text-slate">Outstanding</p><p className="font-semibold text-amber-600">{fmt(data?.totalOutstanding || 0)}</p></div>
-          <div><p className="text-slate">Collection Rate</p><p className="font-semibold text-ink">{data?.collectionRate || 0}%</p></div>
+          <div><p className="text-slate">Total Invoiced</p><p className="font-semibold text-ink">{fmt(data.totalInvoiced || 0)}</p></div>
+          <div><p className="text-slate">Total Collected</p><p className="font-semibold text-green-600">{fmt(data.totalCollected || 0)}</p></div>
+          <div><p className="text-slate">Outstanding</p><p className="font-semibold text-amber-600">{fmt(data.totalOutstanding || 0)}</p></div>
+          <div><p className="text-slate">Collection Rate</p><p className="font-semibold text-ink">{data.collectionRate || 0}%</p></div>
         </div>
       </div>
       <div className="mt-6 bg-white rounded-xl border border-cloud shadow-sm p-5">
         <h3 className="font-semibold text-ink mb-4">Invoice Status</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div className="text-center"><p className="text-2xl font-bold text-green-600">{data?.invoices?.paid || 0}</p><p className="text-slate text-xs mt-1">Paid</p></div>
-          <div className="text-center"><p className="text-2xl font-bold text-blue-600">{data?.invoices?.partiallypaid || 0}</p><p className="text-slate text-xs mt-1">Partially Paid</p></div>
-          <div className="text-center"><p className="text-2xl font-bold text-amber-600">{data?.invoices?.pending || 0}</p><p className="text-slate text-xs mt-1">Pending</p></div>
-          <div className="text-center"><p className="text-2xl font-bold text-ink">{data?.invoices?.total || 0}</p><p className="text-slate text-xs mt-1">Total</p></div>
+          <div className="text-center"><p className="text-2xl font-bold text-green-600">{data.invoices?.paid || 0}</p><p className="text-slate text-xs mt-1">Paid</p></div>
+          <div className="text-center"><p className="text-2xl font-bold text-blue-600">{data.invoices?.partiallypaid || 0}</p><p className="text-slate text-xs mt-1">Partially Paid</p></div>
+          <div className="text-center"><p className="text-2xl font-bold text-amber-600">{data.invoices?.pending || 0}</p><p className="text-slate text-xs mt-1">Pending</p></div>
+          <div className="text-center"><p className="text-2xl font-bold text-ink">{data.invoices?.total || 0}</p><p className="text-slate text-xs mt-1">Total</p></div>
         </div>
       </div>
     </>
@@ -300,7 +280,7 @@ const ExpensesTab = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><svg className="animate-spin h-8 w-8 text-sage-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
+        <Spinner />
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-cloud p-10 text-center">
           <p className="text-slate">No expenses recorded yet.</p>
@@ -377,9 +357,24 @@ const ExpensesTab = () => {
   );
 };
 
-// ── Main Finance Component with Tabs ─────────────────────────
+// ── Main Finance Component — single fetch via /finance/all ─────
 const Finance = () => {
   const [activeTab, setActiveTab] = useState('expenses');
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [loading, setLoading] = useState(true);
+  const [pnlData, setPnlData] = useState(null);
+  const [summaryData, setSummaryData] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    financeAPI.getAll(year)
+      .then(({ data }) => {
+        setPnlData(data.pnl);
+        setSummaryData(data.summary);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [year]);
 
   const TABS = [
     { id: 'expenses', label: 'Expenses' },
@@ -389,9 +384,22 @@ const Finance = () => {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="mb-5 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-display font-semibold text-ink">Finance</h1>
-        <p className="text-slate text-xs sm:text-sm mt-0.5">Manage expenses, revenue & financial reporting</p>
+      <div className="mb-5 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-display font-semibold text-ink">Finance</h1>
+          <p className="text-slate text-xs sm:text-sm mt-0.5">Manage expenses, revenue & financial reporting</p>
+        </div>
+        {(activeTab === 'profit-loss' || activeTab === 'balance-sheet') && (
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 self-start sm:self-auto"
+          >
+            {[new Date().getFullYear(), new Date().getFullYear() - 1].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div className="flex gap-2 mb-6 border-b border-cloud overflow-x-auto">
@@ -405,8 +413,8 @@ const Finance = () => {
 
       <div>
         {activeTab === 'expenses' && <ExpensesTab />}
-        {activeTab === 'profit-loss' && <ProfitLossTab />}
-        {activeTab === 'balance-sheet' && <BalanceSheetTab />}
+        {activeTab === 'profit-loss' && <ProfitLossTab data={pnlData} loading={loading} />}
+        {activeTab === 'balance-sheet' && <BalanceSheetTab data={summaryData} loading={loading} />}
       </div>
     </div>
   );

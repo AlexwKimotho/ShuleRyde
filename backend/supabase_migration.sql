@@ -323,3 +323,43 @@ CREATE TRIGGER trg_schools_updated_at BEFORE UPDATE ON schools FOR EACH ROW EXEC
 -- Link children to schools (FK, keeps school_name for backward compat)
 ALTER TABLE children ADD COLUMN IF NOT EXISTS school_id UUID REFERENCES schools(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS children_school_idx ON children(school_id);
+
+-- ============================================================
+-- DRIVERS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS drivers (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id     UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+  vehicle_id      UUID REFERENCES vehicles(id) ON DELETE SET NULL,
+  name            TEXT NOT NULL,
+  phone           TEXT,
+  license_number  TEXT,
+  license_expiry  DATE,
+  status          TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS drivers_operator_idx ON drivers(operator_id);
+ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "drivers_operator" ON drivers FOR ALL USING (operator_id = auth.uid());
+CREATE TRIGGER trg_drivers_updated_at BEFORE UPDATE ON drivers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- MANIFESTS (daily attendance / check-in log)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS manifests (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operator_id UUID NOT NULL REFERENCES operators(id) ON DELETE CASCADE,
+  student_id  UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  check_date  DATE NOT NULL,
+  arrived_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes       TEXT,
+  UNIQUE (student_id, check_date)
+);
+
+CREATE INDEX IF NOT EXISTS manifests_operator_date_idx ON manifests(operator_id, check_date);
+ALTER TABLE manifests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "manifests_operator" ON manifests FOR ALL USING (operator_id = auth.uid());

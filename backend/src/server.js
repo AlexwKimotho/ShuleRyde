@@ -36,6 +36,8 @@ app.use('/api/finance', require('./routes/finance'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/schools', require('./routes/schools'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));
+app.use('/api/manifests', require('./routes/manifests'));
+app.use('/api/drivers', require('./routes/drivers'));
 
 // Health check
 app.get('/health', (req, res) => {

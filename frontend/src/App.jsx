@@ -15,6 +15,10 @@ import LandingPage from './pages/LandingPage';
 import Payments from './pages/Payments';
 import Schools from './pages/Schools';
 import Manifest from './pages/Manifest';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Drivers from './pages/Drivers';
+import ActivityLog from './pages/ActivityLog';
 import AdminSignIn from './pages/AdminSignIn';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminOperatorDetail from './pages/AdminOperatorDetail';
@@ -59,6 +63,8 @@ const AppRoutes = () => {
       {/* Operator routes */}
       <Route path="/signin" element={operator ? <Navigate to="/dashboard" replace /> : <SignIn />} />
       <Route path="/signup" element={operator ? <Navigate to="/dashboard" replace /> : <SignUp />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route
         path="/dashboard"
@@ -72,6 +78,8 @@ const AppRoutes = () => {
         <Route path="payments" element={<PermissionRoute permission="parents"><Payments /></PermissionRoute>} />
         <Route path="compliance" element={<PermissionRoute permission="compliance"><Compliance /></PermissionRoute>} />
         <Route path="finance" element={<PermissionRoute permission="finance"><Finance /></PermissionRoute>} />
+        <Route path="drivers" element={<PermissionRoute permission="vehicles"><Drivers /></PermissionRoute>} />
+        <Route path="activity" element={<ActivityLog />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

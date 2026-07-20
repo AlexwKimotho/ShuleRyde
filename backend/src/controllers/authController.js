@@ -110,4 +110,52 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, signin, getMe };
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    // Use the REST API directly to avoid touching the service-role client's session
+    await fetch(`${process.env.SUPABASE_URL}/auth/v1/recover`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+      },
+      body: JSON.stringify({
+        email,
+        redirect_to: `${process.env.FRONTEND_URL}/reset-password`,
+      }),
+    });
+
+    // Always 200 — don't leak whether the email exists
+    res.json({ message: 'If an account exists for that email, a reset link has been sent.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { access_token, password } = req.body;
+    if (!access_token || !password) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Verify the recovery token and get the user
+    const { data: { user }, error: verifyErr } = await supabase.auth.getUser(access_token);
+    if (verifyErr || !user) return res.status(401).json({ error: 'Invalid or expired reset link' });
+
+    const { error: updateErr } = await supabase.auth.admin.updateUserById(user.id, { password });
+    if (updateErr) throw updateErr;
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { signup, signin, getMe, forgotPassword, resetPassword };

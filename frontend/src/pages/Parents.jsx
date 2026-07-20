@@ -181,6 +181,11 @@ const ParentViewModal = ({ parent, onClose }) => (
 const ParentRow = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRefresh }) => {
   const [expanded, setExpanded] = useState(false);
   const [studentModal, setStudentModal] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const copyPortalLink = () => {
+    const url = `${window.location.origin}/parent/${parent.unique_url_id}`;
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  };
 
   const handleDeleteStudent = async (studentId) => {
     if (!window.confirm('Delete this student?')) return;
@@ -213,6 +218,17 @@ const ParentRow = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRefr
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
+            </button>
+            <button onClick={copyPortalLink} className={`transition-colors ${copied ? 'text-green-600' : 'text-slate hover:text-sage-600'}`} title={copied ? 'Copied!' : 'Copy parent portal link'}>
+              {copied ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              )}
             </button>
             <button onClick={() => onEdit(parent)} className="text-slate hover:text-ink transition-colors" title="Edit">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,6 +307,11 @@ const ParentRow = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRefr
 const ParentCard = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRefresh }) => {
   const [expanded, setExpanded] = useState(false);
   const [studentModal, setStudentModal] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const copyPortalLink = () => {
+    const url = `${window.location.origin}/parent/${parent.unique_url_id}`;
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  };
 
   const handleDeleteStudent = async (studentId) => {
     if (!window.confirm('Delete this student?')) return;
@@ -337,6 +358,17 @@ const ParentCard = ({ parent, vehicles, schools, onEdit, onDelete, onView, onRef
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
+            </button>
+            <button onClick={copyPortalLink} className={`transition-colors ${copied ? 'text-green-600' : 'text-slate hover:text-sage-600'}`} title={copied ? 'Copied!' : 'Copy parent portal link'}>
+              {copied ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              )}
             </button>
             <button onClick={() => onEdit(parent)} className="text-slate hover:text-ink transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -2,6 +2,45 @@ const supabase = require('../config/database');
 
 const todayDate = () => new Date().toISOString().slice(0, 10);
 
+const normalizePhone = (phone) => {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('254')) return digits;
+  if (digits.startsWith('0')) return '254' + digits.slice(1);
+  if (digits.length === 9) return '254' + digits;
+  return digits;
+};
+
+const sendCheckinWhatsApp = async (studentId) => {
+  try {
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const token = process.env.WHATSAPP_TOKEN;
+    if (!phoneNumberId || !token) return;
+
+    const { data: student } = await supabase
+      .from('children')
+      .select('full_name, parents(phone, operators(business_name))')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (!student?.parents?.phone) return;
+    const to = normalizePhone(student.parents.phone);
+    if (!to) return;
+
+    const bizName = student.parents.operators?.business_name || 'ShuleRyde';
+    const time = new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+    const body = `✅ ${student.full_name} has boarded and been checked in at ${time}. Safe travels! — ${bizName}`;
+
+    await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body } }),
+    });
+  } catch {
+    // fire-and-forget — never fail the check-in
+  }
+};
+
 // GET /api/manifests?date=YYYY-MM-DD
 const getManifest = async (req, res, next) => {
   try {
@@ -50,6 +89,10 @@ const checkIn = async (req, res, next) => {
     if (error) throw error;
 
     const time = new Date(data.arrived_at).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+
+    // Fire-and-forget WhatsApp notification to parent
+    sendCheckinWhatsApp(student_id);
+
     res.status(201).json({ student_id: data.student_id, arrived: true, time });
   } catch (err) {
     next(err);

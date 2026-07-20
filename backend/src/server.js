@@ -38,6 +38,7 @@ app.use('/api/schools', require('./routes/schools'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));
 app.use('/api/manifests', require('./routes/manifests'));
 app.use('/api/drivers', require('./routes/drivers'));
+app.use('/api/parent-portal', require('./routes/parentPortal'));
 
 // Health check
 app.get('/health', (req, res) => {

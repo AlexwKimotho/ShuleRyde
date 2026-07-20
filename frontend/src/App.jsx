@@ -15,6 +15,7 @@ import LandingPage from './pages/LandingPage';
 import Payments from './pages/Payments';
 import Schools from './pages/Schools';
 import Manifest from './pages/Manifest';
+import ParentPortal from './pages/ParentPortal';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Drivers from './pages/Drivers';
@@ -63,6 +64,7 @@ const AppRoutes = () => {
       {/* Operator routes */}
       <Route path="/signin" element={operator ? <Navigate to="/dashboard" replace /> : <SignIn />} />
       <Route path="/signup" element={operator ? <Navigate to="/dashboard" replace /> : <SignUp />} />
+      <Route path="/parent/:uniqueId" element={<ParentPortal />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 

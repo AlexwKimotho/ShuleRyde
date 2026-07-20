@@ -111,6 +111,11 @@ export const driversAPI = {
   delete: (id) => api.delete(`/drivers/${id}`),
 };
 
+export const parentPortalAPI = {
+  get: (uniqueId) => api.get(`/parent-portal/${uniqueId}`),
+  updateContact: (uniqueId, data) => api.put(`/parent-portal/${uniqueId}/contact`, data),
+};
+
 export const whatsappAPI = {
   sendDocument: (formData) => api.post('/whatsapp/send', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
